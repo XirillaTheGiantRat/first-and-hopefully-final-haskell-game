@@ -1,5 +1,3 @@
--- | This module contains the data types
---   which represent the state of the game
 module Model where
 
 data InfoToShow = ShowNothing
@@ -10,9 +8,11 @@ nO_SECS_BETWEEN_CYCLES :: Float
 nO_SECS_BETWEEN_CYCLES = 5
 
 data GameState = GameState {
-                   infoToShow  :: InfoToShow
-                 , elapsedTime :: Float
+                   infoToShow  :: InfoToShow,
+                   elapsedTime :: Float,
+                   position    :: (Float, Float)  -- (x, y) coordinates for the dot
                  }
 
 initialState :: GameState
-initialState = GameState ShowNothing 0
+initialState = GameState (ShowAChar '.') 0 (0, 0)  -- Start with a dot at the center
+
