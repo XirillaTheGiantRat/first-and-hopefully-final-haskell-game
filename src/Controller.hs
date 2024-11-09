@@ -4,7 +4,7 @@ import Model
 import Graphics.Gloss.Interface.IO.Game
 import System.IO (readFile, writeFile, appendFile)
 import Data.List (sortBy)
-import Control.Concurrent (threadDelay)
+import System.Random (randomRIO)
 
 -- Movement amount per frame
 moveAmount :: Float
