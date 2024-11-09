@@ -2,7 +2,9 @@ module Controller where
 
 import Model
 import Graphics.Gloss.Interface.IO.Game
-import System.IO (readFile)
+import System.IO (readFile, writeFile, appendFile)
+import Data.List (sortBy)
+import Control.Concurrent (threadDelay)
 
 -- Movement amount per frame
 moveAmount :: Float
@@ -59,6 +61,27 @@ readHighScores :: IO [Int]
 readHighScores = do
     content <- readFile highScoreFile
     let scores = map read (lines content) :: [Int]
-    putStrLn "High Scores (Debug):"
-    mapM_ print scores  -- Print each score to the console
     return scores
+
+-- Function to save a new high score with debug messages
+writeHighScore :: Int -> IO ()
+writeHighScore newScore = do
+    putStrLn "Starting to save a new high score..."
+
+    -- Read existing high scores
+    putStrLn "Reading existing high scores..."
+    scores <- readHighScores
+    putStrLn $ "Current scores: " ++ show scores
+
+    -- Insert the new score in the correct order (descending)
+    let updatedScores = insertScore newScore scores
+    putStrLn $ "Updated scores (after insertion): " ++ show updatedScores
+
+    -- Write the updated scores to the file
+    putStrLn "Writing updated scores to file..."
+    writeFile highScoreFile (unlines (map show updatedScores))
+
+-- Helper function to insert a score in descending order
+insertScore :: Int -> [Int] -> [Int]
+insertScore newScore scores = 
+    sortBy (flip compare) (newScore : scores)  -- Sorts in descending order
