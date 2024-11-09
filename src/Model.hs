@@ -10,9 +10,9 @@ nO_SECS_BETWEEN_CYCLES = 5
 data GameState = GameState {
                    infoToShow  :: InfoToShow,
                    elapsedTime :: Float,
-                   position    :: (Float, Float)  -- (x, y) coordinates for the dot
+                   position    :: (Float, Float),  -- (x, y) coordinates for the dot
+                   activeKeys  :: [Char]           -- List of currently held keys
                  }
 
 initialState :: GameState
-initialState = GameState (ShowAChar '.') 0 (0, 0)  -- Start with a dot at the center
-
+initialState = GameState (ShowAChar '.') 0 (0, 0) []  -- Start with a dot at the center, no keys pressed
