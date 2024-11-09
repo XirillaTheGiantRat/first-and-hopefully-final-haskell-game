@@ -9,8 +9,9 @@ view = return . viewPure
 viewPure :: GameState -> Picture
 viewPure gstate = 
   let (x, y) = position gstate
-      character = translate x y (characterPic gstate)  -- Move the character based on position
-  in case infoToShow gstate of
-      ShowNothing   -> blank           -- Don't show anything if we don't need to display anything
-      ShowAChar _   -> character       -- Show character if we need to display a character
+      character = translate x y (characterPic gstate)  -- Draw the character image at (x, y)
+      -- Render each bullet (using a small red circle)
+      bulletsPics = map (translateBulletPic . bulletPosition) (bullets gstate)  
+      translateBulletPic (bx, by) = translate bx by (color red (circleSolid 5))  -- Bullet is a small red circle
+  in pictures (character : bulletsPics)  -- Combine character and bullets into one picture
 

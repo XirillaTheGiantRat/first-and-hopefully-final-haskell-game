@@ -13,7 +13,15 @@ step secs gstate =
   let (x, y) = position gstate
       -- Calculate new position based on active keys
       newPosition = foldl move (x, y) (activeKeys gstate)
-  in return $ gstate { elapsedTime = elapsedTime gstate + secs, position = newPosition }
+      -- Update positions of bullets and remove those off-screen (e.g., bullets with y > 900)
+      updatedBullets = filter (\(Bullet (_, by)) -> by <= 900) $ map moveBullet (bullets gstate)
+  in return $ gstate { elapsedTime = elapsedTime gstate + secs, position = newPosition, bullets = updatedBullets }
+
+
+-- Move the bullet upwards
+moveBullet :: Bullet -> Bullet
+moveBullet (Bullet (x, y)) = Bullet (x, y + 5)  -- Move the bullet upwards by 5 units
+
 
 -- Update position based on key direction
 move :: (Float, Float) -> Char -> (Float, Float)
@@ -28,6 +36,13 @@ input :: Event -> GameState -> IO GameState
 input e gstate = return (inputKey e gstate)
 
 inputKey :: Event -> GameState -> GameState
+inputKey (EventKey (Char 'f') Down _ _) gstate = 
+  -- When spacebar is pressed, create a new bullet and add it to the bullets list
+  let (x, y) = position gstate
+      newBullet = Bullet (x, y + 20)  -- Bullet starts just above the spaceship (adjust as needed)
+  in gstate { bullets = newBullet : bullets gstate }  -- Add new bullet to the bullets list
+
+
 inputKey (EventKey (Char c) Down _ _) gstate
   | c `elem` "wasd" = gstate { activeKeys = c : activeKeys gstate }  -- Add key to activeKeys on press
 inputKey (EventKey (Char c) Up _ _) gstate

@@ -8,14 +8,18 @@ data InfoToShow = ShowNothing
 nO_SECS_BETWEEN_CYCLES :: Float
 nO_SECS_BETWEEN_CYCLES = 5
 
+-- Bullet data type with a different name for the position field
+data Bullet = Bullet { bulletPosition :: (Float, Float) }  -- Bullet position
+
 data GameState = GameState {
-                   infoToShow  :: InfoToShow,
-                   elapsedTime :: Float,
-                   position    :: (Float, Float),  -- (x, y) coordinates for the character
-                   activeKeys  :: [Char],          -- List of currently held keys
-                   characterPic :: Picture         -- Loaded picture for the character
+                   infoToShow    :: InfoToShow,
+                   elapsedTime   :: Float,
+                   position      :: (Float, Float),  -- Position of the spaceship
+                   activeKeys    :: [Char],
+                   characterPic  :: Picture,
+                   bullets       :: [Bullet]  -- List of bullets
                  }
 
+-- Initialize the game state
 initialState :: Picture -> GameState
-initialState pic = GameState (ShowAChar '.') 0 (0, 0) [] pic  -- Show a character initially
-
+initialState pic = GameState ShowNothing 0 (0, 0) [] pic []  -- Start with no text or number, no bullets
