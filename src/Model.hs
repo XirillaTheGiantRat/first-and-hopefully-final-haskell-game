@@ -13,7 +13,15 @@ nO_SECS_BETWEEN_CYCLES = 5
 data Bullet = Bullet { bulletPosition :: (Float, Float) }  -- Bullet position
 
 -- Enemy data type with a position and picture
-data Enemy = Enemy { enemyPosition :: (Float, Float), enemyPic :: Picture }  -- Represents an enemy
+-- Your existing definition of Enemy
+data Enemy = Enemy { enemyPosition :: (Float, Float), enemyPic :: Picture }
+
+-- Implement Eq for Enemy
+-- Implement Eq for Enemy
+instance Eq Enemy where
+  (Enemy (x1, y1) _) == (Enemy (x2, y2) _) = (x1 == x2) && (y1 == y2)
+
+
 
 -- Assuming GameMode is something like this:
 data GameMode = PreGame | InGame | GameOver  -- Add more states if needed
@@ -22,21 +30,21 @@ data GameMode = PreGame | InGame | GameOver  -- Add more states if needed
 data GameState = GameState {
                    infoToShow    :: InfoToShow,
                    elapsedTime   :: Float,
-                   position      :: (Float, Float),  -- Position of the spaceship
+                   position      :: (Float, Float),
                    activeKeys    :: [Char],
                    characterPic  :: Picture,
-                   bullets       :: [Bullet],  -- List of bullets
-                   enemies       :: [Enemy],  -- List of enemies
-                   cooldownTime  :: Float,    -- Cooldown time in seconds
-                   isAlive       :: Bool,     -- Whether the player is alive or not
-                   gameMode      :: GameMode  -- Game mode (PreGame or InGame)
+                   bullets       :: [Bullet],
+                   enemies       :: [Enemy],
+                   cooldownTime  :: Float,
+                   isAlive       :: Bool,
+                   gameMode      :: GameMode,
+                   lives         :: Int  -- Add lives to track player lives
                  }
 
-
-
--- Initialize the game state
+-- Initialize the game state with 2 lives
 initialState :: Picture -> GameState
-initialState pic = GameState ShowNothing 0 (0, 0) [] pic [] [] 0 True PreGame
+initialState pic = GameState ShowNothing 0 (0, 0) [] pic [] [] 0 True PreGame 2
+
 
 -- Function to generate a random position on the screen (example: within 0-1500 for x and 0-900 for y)
 randomPosition :: IO (Float, Float)

@@ -21,27 +21,27 @@ step secs gstate = do
 
   -- Ensure there are always two enemies
   let enemiesToAdd = if length (enemies gstate) < 2
-                     then spawnRandomEnemies 1  -- Spawn 1 new enemy if fewer than 2 exist
-                     else return (enemies gstate)  -- Keep the existing enemies
+                     then spawnRandomEnemies 1
+                     else return (enemies gstate)
 
   -- If the player is alive, move the character and process the bullets
   let (x, y) = position gstate
       newPosition = if isAlive gstate
-                    then foldl move (x, y) (activeKeys gstate)  -- Only move if the player is alive
-                    else (x, y)  -- If dead, don't change position
+                    then foldl move (x, y) (activeKeys gstate)
+                    else (x, y)
 
   -- Move the bullets and remove those that go off screen
   let updatedBullets = filter (\(Bullet (_, by)) -> by <= 900) $ map moveBullet (bullets gstate)
 
   -- Handle continuous shooting with cooldown
   let newBullet = if 'f' `elem` activeKeys gstate && newCooldownTime == 0 && isAlive gstate
-                  then [Bullet (x, y + 20)]  -- Create a new bullet only if the player is alive
+                  then [Bullet (x, y + 20)]
                   else []
-      allBullets = newBullet ++ updatedBullets  -- Add the new bullet to the list of bullets
+      allBullets = newBullet ++ updatedBullets
 
   -- Update the cooldown time
   let finalCooldownTime = if 'f' `elem` activeKeys gstate && newCooldownTime == 0 && isAlive gstate
-                           then 0.2  -- Set the cooldown time to 0.2 seconds (adjust as needed)
+                           then 0.2
                            else newCooldownTime
 
   -- Get the updated enemies, filtering out those hit by bullets
@@ -49,23 +49,25 @@ step secs gstate = do
   updatedEnemies <- handleCollisions allBullets enemiesToAdd'
 
   -- Check for collision between the player and enemies
-  let newIsAlive = if isAlive gstate && any (isPlayerHitByEnemy (position gstate)) updatedEnemies
-                   then False  -- Player is hit, set alive status to False
-                   else isAlive gstate
-
-  -- If the player is dead, set the game mode to GameOver
-  let newGameMode = if not newIsAlive then GameOver else gameMode gstate
+  let newGameState = foldl (\gs enemy -> isPlayerHitByEnemy (position gs) enemy gs) gstate updatedEnemies
 
   -- Return the updated game state with the new enemies, bullets, cooldown time, and game mode
-  return gstate { elapsedTime = newElapsedTime, position = newPosition, bullets = allBullets, enemies = updatedEnemies, cooldownTime = finalCooldownTime, isAlive = newIsAlive, gameMode = newGameMode }
+  return newGameState { elapsedTime = newElapsedTime, position = newPosition, bullets = allBullets, enemies = updatedEnemies, cooldownTime = finalCooldownTime }
+
+
+-- Function to check if the player has collided with an enemy and update the game state
+isPlayerHitByEnemy :: (Float, Float) -> Enemy -> GameState -> GameState
+isPlayerHitByEnemy (px, py) (Enemy (ex, ey) _) gstate
+  | isAlive gstate && abs (px - ex) < 20 && abs (py - ey) < 20 = 
+      let newLives = lives gstate - 1
+          newIsAlive = newLives > 0
+          newGameMode = if newLives <= 0 then GameOver else gameMode gstate
+      in gstate { lives = newLives, isAlive = newIsAlive, gameMode = newGameMode }
+  | otherwise = gstate
 
 
 
--- Function to check if the player has collided with an enemy
-isPlayerHitByEnemy :: (Float, Float) -> Enemy -> Bool
-isPlayerHitByEnemy (px, py) (Enemy (ex, ey) _) =
-  -- Check if the player is close enough to the enemy to count as a collision
-  abs (px - ex) < 20 && abs (py - ey) < 20  -- Adjust the threshold (20) as needed for collision detection
+
 
 
 -- Function to check for collisions between bullets and enemies
@@ -165,9 +167,11 @@ resetGameState gstate = gstate {
   bullets = [],       -- Clear bullets
   enemies = [],       -- Clear enemies
   isAlive = True,     -- Reset player's life
+  lives = 2,          -- Set the starting number of lives
   elapsedTime = 0,    -- Reset the elapsed time
   cooldownTime = 0    -- Reset cooldown for shooting
 }
+
 
 
 
