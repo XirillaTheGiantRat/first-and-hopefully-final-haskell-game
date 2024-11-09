@@ -125,15 +125,24 @@ input :: Event -> GameState -> IO GameState
 input e gstate = case e of
   -- Handle "Start Game" button click in PreGame
   EventKey (MouseButton LeftButton) Down _ (mx, my) -> 
-    if gameMode gstate == PreGame && isStartButtonClicked (mx, my)
+    if gameMode gstate == PreGame && isTopClicked (mx, my)
     then return gstate { gameMode = InGame }  -- Start the game
-    else if gameMode gstate == GameOver && isStartOverButtonClicked (mx, my)
+    else if gameMode gstate == PreGame && isBottomClicked (mx, my)
+      then return gstate { gameMode = ControlsScreen }  -- Show the controls screen
+    else if gameMode gstate == GameOver && isTopClicked (mx, my)
       then do
         -- Reset the game state when clicking "Start Over"
-        let resetState = resetGameState gstate  -- Reset the game state to initial values
-        return resetState { gameMode = InGame }  -- Start directly in InGame mode
-      else
-        return gstate
+        let resetState = resetGameState gstate
+        return resetState { gameMode = InGame }
+    else if gameMode gstate == ControlsScreen && isBottomClicked (mx, my)
+      then return gstate { gameMode = PreGame }  -- Go back to PreGame
+    else if gameMode gstate == GameOver && isBottomClicked (mx, my)
+      then do
+        -- Reset the game state when clicking "Start Over"
+        let resetState = resetGameState gstate
+        return resetState { gameMode = PreGame }
+    else
+      return gstate
 
   -- Handle movement keys ('w', 'a', 's', 'd')
   EventKey (Char c) Down _ _    | c `elem` "wasd" -> return $ gstate { activeKeys = c : activeKeys gstate }
@@ -147,16 +156,20 @@ input e gstate = case e of
   _ -> return gstate
 
 
+
+-- Function to check if the controls button was clicked
+isBottomClicked :: (Float, Float) -> Bool
+isBottomClicked (mx, my) =
+  mx >= -130 && mx <= 70 && my >= -170 && my <= -70  -- Adjust button position and size as needed
+
+
 -- Function to check if the start over button was clicked
-isStartOverButtonClicked :: (Float, Float) -> Bool
-isStartOverButtonClicked (mx, my) =
-  mx >= -130 && mx <= 70 && my >= -150 && my <= -50  -- Adjust button position and size as needed
+isTopClicked :: (Float, Float) -> Bool
+isTopClicked (mx, my) =
+  mx >= -130 && mx <= 70 && my >= -60 && my <= 40  -- Adjust button position and size as needed
 
 
--- Function to check if the start button was clicked
-isStartButtonClicked :: (Float, Float) -> Bool
-isStartButtonClicked (mx, my) =
-  mx >= -130 && mx <= 70 && my >= -50 && my <= 50  -- Adjust button position and size as needed
+
 
 -- Function to reset the game state to the initial state
 -- Reset the game state to its initial values

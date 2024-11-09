@@ -21,7 +21,7 @@ main = do
   
   -- Start the game with initial state
   playIO (InWindow "Spaceshooter" (1500, 900) (0, 0)) -- Window title and size
-         black               -- Background color
+         white               -- Background color
          60                  -- Frames per second
          initialState'       -- Initial state with the character image
          view                -- View function
