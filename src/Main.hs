@@ -12,12 +12,18 @@ main = do
   -- load the highscores
   highScores <- readHighScores
   -- Load the BMP image for the spaceship
+  -- Load the BMP image for the spaceship and the enemies
   characterPic <- loadBMP "character.bmp"
-  -- Initialize the game state with the character image
+  enemyPic <- loadBMP "enemies.bmp"  -- Load enemy image
+  
+  -- Initialize the game state with the character image and no enemies
+  let initialState' = initialState characterPic  -- Start with no enemies initially
+  
+  -- Start the game with initial state
   playIO (InWindow "Spaceshooter" (1500, 900) (0, 0)) -- Window title and size
          black               -- Background color
          60                  -- Frames per second
-         (initialState characterPic) -- Initial state with the image
+         initialState'       -- Initial state with the character image
          view                -- View function
          input               -- Event function
          step                -- Step function
