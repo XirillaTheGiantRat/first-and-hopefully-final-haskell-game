@@ -24,31 +24,44 @@ step secs gstate = do
                      then spawnRandomEnemies 1  -- Spawn 1 new enemy if fewer than 2 exist
                      else return (enemies gstate)  -- Keep the existing enemies
 
-  -- Calculate new position based on active keys
+  -- If the player is alive, move the character and process the bullets
   let (x, y) = position gstate
-      newPosition = foldl move (x, y) (activeKeys gstate)
+      newPosition = if isAlive gstate
+                    then foldl move (x, y) (activeKeys gstate)  -- Only move if the player is alive
+                    else (x, y)  -- If dead, don't change position
 
   -- Move the bullets and remove those that go off screen
   let updatedBullets = filter (\(Bullet (_, by)) -> by <= 900) $ map moveBullet (bullets gstate)
 
   -- Handle continuous shooting with cooldown
-  let newBullet = if 'f' `elem` activeKeys gstate && newCooldownTime == 0
-                  then [Bullet (x, y + 20)]  -- Create a new bullet if "f" is held down and cooldown is 0
+  let newBullet = if 'f' `elem` activeKeys gstate && newCooldownTime == 0 && isAlive gstate
+                  then [Bullet (x, y + 20)]  -- Create a new bullet only if the player is alive
                   else []
       allBullets = newBullet ++ updatedBullets  -- Add the new bullet to the list of bullets
 
   -- Update the cooldown time
-  let finalCooldownTime = if 'f' `elem` activeKeys gstate && newCooldownTime == 0
-                           then 0.2  -- Set the cooldown time to 1 second (adjust as needed)
+  let finalCooldownTime = if 'f' `elem` activeKeys gstate && newCooldownTime == 0 && isAlive gstate
+                           then 0.2  -- Set the cooldown time to 0.2 seconds (adjust as needed)
                            else newCooldownTime
 
   -- Get the updated enemies, filtering out those hit by bullets
   enemiesToAdd' <- enemiesToAdd
   updatedEnemies <- handleCollisions allBullets enemiesToAdd'
 
-  -- Return the updated game state with the new enemies, bullets, and cooldown time
-  return gstate { elapsedTime = newElapsedTime, position = newPosition, bullets = allBullets, enemies = updatedEnemies, cooldownTime = finalCooldownTime }
+  -- Check for collision between the player and enemies
+  let newIsAlive = if isAlive gstate && any (isPlayerHitByEnemy (position gstate)) updatedEnemies
+                   then False  -- Player is hit, set alive status to False
+                   else isAlive gstate
 
+  -- Return the updated game state with the new enemies, bullets, and cooldown time
+  return gstate { elapsedTime = newElapsedTime, position = newPosition, bullets = allBullets, enemies = updatedEnemies, cooldownTime = finalCooldownTime, isAlive = newIsAlive }
+
+
+-- Function to check if the player has collided with an enemy
+isPlayerHitByEnemy :: (Float, Float) -> Enemy -> Bool
+isPlayerHitByEnemy (px, py) (Enemy (ex, ey) _) =
+  -- Check if the player is close enough to the enemy to count as a collision
+  abs (px - ex) < 20 && abs (py - ey) < 20  -- Adjust the threshold (20) as needed for collision detection
 
 
 -- Function to check for collisions between bullets and enemies
