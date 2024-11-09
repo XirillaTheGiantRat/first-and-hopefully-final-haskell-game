@@ -15,6 +15,10 @@ data Bullet = Bullet { bulletPosition :: (Float, Float) }  -- Bullet position
 -- Enemy data type with a position and picture
 data Enemy = Enemy { enemyPosition :: (Float, Float), enemyPic :: Picture }  -- Represents an enemy
 
+-- Assuming GameMode is something like this:
+data GameMode = PreGame | InGame | GameOver  -- Add more states if needed
+  deriving (Eq)  -- This automatically derives Eq instance
+
 data GameState = GameState {
                    infoToShow    :: InfoToShow,
                    elapsedTime   :: Float,
@@ -24,14 +28,15 @@ data GameState = GameState {
                    bullets       :: [Bullet],  -- List of bullets
                    enemies       :: [Enemy],  -- List of enemies
                    cooldownTime  :: Float,    -- Cooldown time in seconds
-                   isAlive       :: Bool      -- Whether the player is alive or not
+                   isAlive       :: Bool,     -- Whether the player is alive or not
+                   gameMode      :: GameMode  -- Game mode (PreGame or InGame)
                  }
 
 
 
 -- Initialize the game state
 initialState :: Picture -> GameState
-initialState pic = GameState ShowNothing 0 (0, 0) [] pic [] [] 0 True
+initialState pic = GameState ShowNothing 0 (0, 0) [] pic [] [] 0 True PreGame
 
 -- Function to generate a random position on the screen (example: within 0-1500 for x and 0-900 for y)
 randomPosition :: IO (Float, Float)

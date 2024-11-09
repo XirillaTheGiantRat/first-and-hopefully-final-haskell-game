@@ -53,8 +53,12 @@ step secs gstate = do
                    then False  -- Player is hit, set alive status to False
                    else isAlive gstate
 
-  -- Return the updated game state with the new enemies, bullets, and cooldown time
-  return gstate { elapsedTime = newElapsedTime, position = newPosition, bullets = allBullets, enemies = updatedEnemies, cooldownTime = finalCooldownTime, isAlive = newIsAlive }
+  -- If the player is dead, set the game mode to GameOver
+  let newGameMode = if not newIsAlive then GameOver else gameMode gstate
+
+  -- Return the updated game state with the new enemies, bullets, cooldown time, and game mode
+  return gstate { elapsedTime = newElapsedTime, position = newPosition, bullets = allBullets, enemies = updatedEnemies, cooldownTime = finalCooldownTime, isAlive = newIsAlive, gameMode = newGameMode }
+
 
 
 -- Function to check if the player has collided with an enemy
@@ -113,20 +117,58 @@ move (x, y) 'd' = (min (x + moveAmount) 720, y)  -- Move right with boundary che
 move pos _      = pos  -- Ignore other keys
 
 
--- Handle user input
+-- Handle user input (including mouse clicks)
+-- Handle user input (including mouse clicks)
 input :: Event -> GameState -> IO GameState
-input e gstate = return (inputKey e gstate)
+input e gstate = case e of
+  -- Handle "Start Game" button click in PreGame
+  EventKey (MouseButton LeftButton) Down _ (mx, my) -> 
+    if gameMode gstate == PreGame && isStartButtonClicked (mx, my)
+    then return gstate { gameMode = InGame }  -- Start the game
+    else if gameMode gstate == GameOver && isStartOverButtonClicked (mx, my)
+      then do
+        -- Reset the game state when clicking "Start Over"
+        let resetState = resetGameState gstate  -- Reset the game state to initial values
+        return resetState { gameMode = InGame }  -- Start directly in InGame mode
+      else
+        return gstate
 
-inputKey :: Event -> GameState -> GameState
-inputKey (EventKey (Char 'f') Down _ _) gstate =
-  gstate { activeKeys = 'f' : activeKeys gstate }  -- Add "f" to activeKeys when pressed
-inputKey (EventKey (Char 'f') Up _ _) gstate =
-  gstate { activeKeys = filter (/= 'f') (activeKeys gstate) }  -- Remove "f" from activeKeys when released
-inputKey (EventKey (Char c) Down _ _) gstate
-  | c `elem` "wasd" = gstate { activeKeys = c : activeKeys gstate }  -- Add key to activeKeys on press
-inputKey (EventKey (Char c) Up _ _) gstate
-  | c `elem` "wasd" = gstate { activeKeys = filter (/= c) (activeKeys gstate) }  -- Remove key on release
-inputKey _ gstate = gstate  -- Keep state unchanged for other events
+  -- Handle movement keys ('w', 'a', 's', 'd')
+  EventKey (Char c) Down _ _    | c `elem` "wasd" -> return $ gstate { activeKeys = c : activeKeys gstate }
+  EventKey (Char c) Up _ _      | c `elem` "wasd" -> return $ gstate { activeKeys = filter (/= c) (activeKeys gstate) }
+
+  -- Handle shooting with "f" key
+  EventKey (Char 'f') Down _ _  -> return $ gstate { activeKeys = 'f' : activeKeys gstate }
+  EventKey (Char 'f') Up _ _    -> return $ gstate { activeKeys = filter (/= 'f') (activeKeys gstate) }
+
+  -- Handle other events (no change)
+  _ -> return gstate
+
+
+-- Function to check if the start over button was clicked
+isStartOverButtonClicked :: (Float, Float) -> Bool
+isStartOverButtonClicked (mx, my) =
+  mx >= -130 && mx <= 70 && my >= -150 && my <= -50  -- Adjust button position and size as needed
+
+
+-- Function to check if the start button was clicked
+isStartButtonClicked :: (Float, Float) -> Bool
+isStartButtonClicked (mx, my) =
+  mx >= -130 && mx <= 70 && my >= -50 && my <= 50  -- Adjust button position and size as needed
+
+-- Function to reset the game state to the initial state
+-- Reset the game state to its initial values
+resetGameState :: GameState -> GameState
+resetGameState gstate = gstate {
+  position = (0, 0),  -- Reset player position
+  activeKeys = [],    -- Clear active keys
+  bullets = [],       -- Clear bullets
+  enemies = [],       -- Clear enemies
+  isAlive = True,     -- Reset player's life
+  elapsedTime = 0,    -- Reset the elapsed time
+  cooldownTime = 0    -- Reset cooldown for shooting
+}
+
 
 
 -- Path to high scores file
