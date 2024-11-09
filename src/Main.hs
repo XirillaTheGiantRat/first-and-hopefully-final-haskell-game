@@ -9,8 +9,8 @@ import Graphics.Gloss
 
 main :: IO ()
 main = do
-  -- load the highscores
-  highScores <- readHighScores
+  -- let testScore = 60
+  -- writeHighScore testScore <-- this was for testing
   -- Load the BMP image for the spaceship
   -- Load the BMP image for the spaceship and the enemies
   characterPic <- loadBMP "character.bmp"
