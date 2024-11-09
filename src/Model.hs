@@ -22,12 +22,14 @@ data GameState = GameState {
                    activeKeys    :: [Char],
                    characterPic  :: Picture,
                    bullets       :: [Bullet],  -- List of bullets
-                   enemies       :: [Enemy]   -- List of enemies
+                   enemies       :: [Enemy],  -- List of enemies
+                   cooldownTime  :: Float     -- Cooldown time in seconds
                  }
+
 
 -- Initialize the game state
 initialState :: Picture -> GameState
-initialState pic = GameState ShowNothing 0 (0, 0) [] pic [] []
+initialState pic = GameState ShowNothing 0 (0, 0) [] pic [] [] 0
 
 -- Function to generate a random position on the screen (example: within 0-1500 for x and 0-900 for y)
 randomPosition :: IO (Float, Float)

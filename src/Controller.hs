@@ -11,11 +11,13 @@ import System.Random (randomRIO)  -- For random generation of enemies
 moveAmount :: Float
 moveAmount = 2
 
--- Handle one iteration of the game
 step :: Float -> GameState -> IO GameState
 step secs gstate = do
   -- Calculate the new elapsed time
   let newElapsedTime = elapsedTime gstate + secs
+
+  -- Reduce the cooldown timer if it's greater than 0
+  let newCooldownTime = max 0 (cooldownTime gstate - secs)
 
   -- Ensure there are always two enemies
   let enemiesToAdd = if length (enemies gstate) < 2
@@ -29,12 +31,25 @@ step secs gstate = do
   -- Move the bullets and remove those that go off screen
   let updatedBullets = filter (\(Bullet (_, by)) -> by <= 900) $ map moveBullet (bullets gstate)
 
+  -- Handle continuous shooting with cooldown
+  let newBullet = if 'f' `elem` activeKeys gstate && newCooldownTime == 0
+                  then [Bullet (x, y + 20)]  -- Create a new bullet if "f" is held down and cooldown is 0
+                  else []
+      allBullets = newBullet ++ updatedBullets  -- Add the new bullet to the list of bullets
+
+  -- Update the cooldown time
+  let finalCooldownTime = if 'f' `elem` activeKeys gstate && newCooldownTime == 0
+                           then 0.2  -- Set the cooldown time to 1 second (adjust as needed)
+                           else newCooldownTime
+
   -- Get the updated enemies, filtering out those hit by bullets
   enemiesToAdd' <- enemiesToAdd
-  updatedEnemies <- handleCollisions (bullets gstate) enemiesToAdd'
+  updatedEnemies <- handleCollisions allBullets enemiesToAdd'
 
-  -- Return the updated game state with the new enemies, bullets, and other changes
-  return gstate { elapsedTime = newElapsedTime, position = newPosition, bullets = updatedBullets, enemies = updatedEnemies }
+  -- Return the updated game state with the new enemies, bullets, and cooldown time
+  return gstate { elapsedTime = newElapsedTime, position = newPosition, bullets = allBullets, enemies = updatedEnemies, cooldownTime = finalCooldownTime }
+
+
 
 -- Function to check for collisions between bullets and enemies
 handleCollisions :: [Bullet] -> [Enemy] -> IO [Enemy]
@@ -67,7 +82,7 @@ spawnRandomEnemies n = do
   return enemies
   where
     spawnEnemy _ = do
-      x <- randomRIO (-450.0, 450.0)  -- Random x position within the new screen width range
+      x <- randomRIO (-700.0, 700.0)  -- Random x position within the new screen width range
       let y = 400.0  -- Fixed y position at 400 (can be adjusted as needed)
       enemyPic <- loadBMP "enemies.bmp"  -- Load enemy image
       return $ Enemy (x, y) enemyPic  -- Create and return an enemy
@@ -76,29 +91,30 @@ spawnRandomEnemies n = do
 moveBullet :: Bullet -> Bullet
 moveBullet (Bullet (x, y)) = Bullet (x, y + 5)  -- Move the bullet upwards by 5 units
 
--- Update position based on key direction
+-- Update position based on key direction with boundary checks
 move :: (Float, Float) -> Char -> (Float, Float)
-move (x, y) 'w' = (x, y + moveAmount)  -- Move up
-move (x, y) 'a' = (x - moveAmount, y)  -- Move left
-move (x, y) 's' = (x, y - moveAmount)  -- Move down
-move (x, y) 'd' = (x + moveAmount, y)  -- Move right
-move pos _      = pos                  -- Ignore other keys
+move (x, y) 'w' = (x, min (y + moveAmount) 420)  -- Move up
+move (x, y) 'a' = (max (x - moveAmount) (-720), y)  -- Move left with boundary check
+move (x, y) 's' = (x, max (y - moveAmount) (-430))  -- Move down
+move (x, y) 'd' = (min (x + moveAmount) 720, y)  -- Move right with boundary check
+move pos _      = pos  -- Ignore other keys
+
 
 -- Handle user input
 input :: Event -> GameState -> IO GameState
 input e gstate = return (inputKey e gstate)
 
 inputKey :: Event -> GameState -> GameState
-inputKey (EventKey (Char 'f') Down _ _) gstate = 
-  let (x, y) = position gstate
-      newBullet = Bullet (x, y + 20)  -- Bullet starts just above the spaceship (adjust as needed)
-  in gstate { bullets = newBullet : bullets gstate }  -- Add new bullet to the bullets list
-
+inputKey (EventKey (Char 'f') Down _ _) gstate =
+  gstate { activeKeys = 'f' : activeKeys gstate }  -- Add "f" to activeKeys when pressed
+inputKey (EventKey (Char 'f') Up _ _) gstate =
+  gstate { activeKeys = filter (/= 'f') (activeKeys gstate) }  -- Remove "f" from activeKeys when released
 inputKey (EventKey (Char c) Down _ _) gstate
   | c `elem` "wasd" = gstate { activeKeys = c : activeKeys gstate }  -- Add key to activeKeys on press
 inputKey (EventKey (Char c) Up _ _) gstate
   | c `elem` "wasd" = gstate { activeKeys = filter (/= c) (activeKeys gstate) }  -- Remove key on release
 inputKey _ gstate = gstate  -- Keep state unchanged for other events
+
 
 -- Path to high scores file
 highScoreFile :: FilePath
