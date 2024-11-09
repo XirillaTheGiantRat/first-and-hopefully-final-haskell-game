@@ -2,6 +2,7 @@ module Controller where
 
 import Model
 import Graphics.Gloss.Interface.IO.Game
+import System.IO (readFile)
 
 -- Movement amount per frame
 moveAmount :: Float
@@ -48,3 +49,16 @@ inputKey (EventKey (Char c) Down _ _) gstate
 inputKey (EventKey (Char c) Up _ _) gstate
   | c `elem` "wasd" = gstate { activeKeys = filter (/= c) (activeKeys gstate) }  -- Remove key on release
 inputKey _ gstate = gstate  -- Keep state unchanged for other events
+
+-- Path to high scores file
+highScoreFile :: FilePath
+highScoreFile = "highscores.txt"
+
+-- Function to read high scores from file and print them to the console
+readHighScores :: IO [Int]
+readHighScores = do
+    content <- readFile highScoreFile
+    let scores = map read (lines content) :: [Int]
+    putStrLn "High Scores (Debug):"
+    mapM_ print scores  -- Print each score to the console
+    return scores
