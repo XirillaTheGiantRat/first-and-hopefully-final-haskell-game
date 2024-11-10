@@ -208,7 +208,9 @@ resetGameState gstate = gstate {
   lives = 2,          -- Set the starting number of lives
   elapsedTime = 0,    -- Reset the elapsed time
   cooldownTime = 0,    -- Reset cooldown for shooting
-  backgroundPosition = 0
+  backgroundPosition = 0,
+  backgroundPosition2 = 900
+
 
 }
 
