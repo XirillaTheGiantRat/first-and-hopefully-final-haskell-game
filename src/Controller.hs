@@ -16,6 +16,22 @@ step secs gstate = do
   -- Calculate the new elapsed time
   let newElapsedTime = elapsedTime gstate + secs
 
+-- Background scrolling
+  -- Background scrolling
+  let
+        -- Calculate new positions for both backgrounds
+        newBgPosition = backgroundPosition gstate - (100 * secs)
+        newBgPosition2 = backgroundPosition2 gstate - (100 * secs)
+
+        -- Reset the first background if it's off-screen, and spawn a new one above it
+        finalBgPosition = if newBgPosition <= -900 then 900 else newBgPosition
+
+        -- Reset the second background if it's off-screen, and spawn a new one above it
+        finalBgPosition2 = if newBgPosition2 <= -900 then 900 else newBgPosition2
+
+
+
+
   -- Reduce the cooldown timer if it's greater than 0
   let newCooldownTime = max 0 (cooldownTime gstate - secs)
 
@@ -32,6 +48,7 @@ step secs gstate = do
 
   -- Move the bullets and remove those that go off screen
   let updatedBullets = filter (\(Bullet (_, by)) -> by <= 900) $ map moveBullet (bullets gstate)
+  
 
   -- Handle continuous shooting with cooldown
   let newBullet = if 'f' `elem` activeKeys gstate && newCooldownTime == 0 && isAlive gstate
@@ -52,7 +69,9 @@ step secs gstate = do
   let newGameState = foldl (\gs enemy -> isPlayerHitByEnemy (position gs) enemy gs) gstate updatedEnemies
 
   -- Return the updated game state with the new enemies, bullets, cooldown time, and game mode
-  return newGameState { elapsedTime = newElapsedTime, position = newPosition, bullets = allBullets, enemies = updatedEnemies, cooldownTime = finalCooldownTime }
+  return newGameState { elapsedTime = newElapsedTime, position = newPosition, bullets = allBullets, enemies = updatedEnemies, cooldownTime = finalCooldownTime, backgroundPosition = finalBgPosition, backgroundPosition2 = finalBgPosition2}
+
+
 
 
 -- Function to check if the player has collided with an enemy and update the game state
@@ -182,7 +201,9 @@ resetGameState gstate = gstate {
   isAlive = True,     -- Reset player's life
   lives = 2,          -- Set the starting number of lives
   elapsedTime = 0,    -- Reset the elapsed time
-  cooldownTime = 0    -- Reset cooldown for shooting
+  cooldownTime = 0,    -- Reset cooldown for shooting
+  backgroundPosition = 0
+
 }
 
 

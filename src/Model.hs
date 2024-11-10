@@ -28,22 +28,26 @@ data GameMode = PreGame | InGame | GameOver | ControlsScreen
   deriving (Eq)  -- This automatically derives Eq instance
 
 data GameState = GameState {
-                   infoToShow    :: InfoToShow,
-                   elapsedTime   :: Float,
-                   position      :: (Float, Float),
-                   activeKeys    :: [Char],
-                   characterPic  :: Picture,
-                   bullets       :: [Bullet],
-                   enemies       :: [Enemy],
-                   cooldownTime  :: Float,
-                   isAlive       :: Bool,
-                   gameMode      :: GameMode,
-                   lives         :: Int  -- Add lives to track player lives
+                   infoToShow        :: InfoToShow,
+                   elapsedTime       :: Float,
+                   position          :: (Float, Float),
+                   activeKeys        :: [Char],
+                   characterPic      :: Picture,
+                   bullets           :: [Bullet],
+                   enemies           :: [Enemy],
+                   cooldownTime      :: Float,
+                   isAlive           :: Bool,
+                   gameMode          :: GameMode,
+                   lives             :: Int,  -- Add lives to track player lives
+                   backgroundPosition :: Float,  -- Position of the first background
+                   backgroundPosition2 :: Float  -- Position of the second background
                  }
+
 
 -- Initialize the game state with 2 lives
 initialState :: Picture -> GameState
-initialState pic = GameState ShowNothing 0 (0, 0) [] pic [] [] 0 True PreGame 2
+initialState pic = GameState ShowNothing 0 (0, 0) [] pic [] [] 0 True PreGame 2 0 900  -- 0 for the first background, 1800 for the second background
+
 
 
 -- Function to generate a random position on the screen (example: within 0-1500 for x and 0-900 for y)
