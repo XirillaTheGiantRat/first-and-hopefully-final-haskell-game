@@ -13,7 +13,7 @@ moveAmount = 2
 
 step :: Float -> GameState -> IO GameState
 step secs gstate =
-  if paused gstate then 
+  if paused gstate || gameMode gstate /= InGame then 
     return gstate  
   else do
     let newElapsedTime = elapsedTime gstate + secs
@@ -63,11 +63,10 @@ step secs gstate =
     -- Collision player enemy
     let (enemiesAfterPlayerCollisions, playerHitCount, newIsAlive, newGameMode) = handlePlayerCollisions newPosition enemiesAfterCollisions gstate
 
-
     -- Player health collision
     let (enemiesAfterPlayerCollisions, newLives, newIsAlive, newGameMode) = handlePlayerCollisions newPosition enemiesAfterCollisions gstate
         updatedScore = score gstate + enemiesHitCount
-        
+
     let newHealth = lives gstate - playerHitCount
         finalHealth = max 0 newHealth
 
