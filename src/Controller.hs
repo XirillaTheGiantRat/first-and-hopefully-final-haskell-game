@@ -62,7 +62,7 @@ step secs gstate =
         finalExplosions = updatedExplosions ++ newExplosions
 
     -- Check for collisions between the player and remaining enemies
-    let (enemiesAfterPlayerCollisions, playerHitCount) = handlePlayerCollisions newPosition enemiesAfterCollisions
+    let (enemiesAfterPlayerCollisions, playerHitCount, newIsAlive, newGameMode) = handlePlayerCollisions newPosition enemiesAfterCollisions gstate
 
 
     -- Handle player collisions with enemies, updating both enemies and player lives
