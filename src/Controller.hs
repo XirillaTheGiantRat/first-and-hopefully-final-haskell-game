@@ -43,8 +43,15 @@ step secs gstate = do
                            then 0.2
                            else newCooldownTime
 
-  -- Handle bullet collisions with enemies
-  (enemiesAfterBulletCollisions, enemiesHitCount) <- handleCollisions allBullets enemiesToAdd'
+
+  -- Handle collisions and add explosions
+  (enemiesAfterCollisions, newExplosions, enemiesHitCount) <- handleCollisions allBullets enemiesToAdd'
+
+  -- Update explosions, reducing their time left and removing those that are finished
+  let updatedExplosions = [e { explosionTimeLeft = explosionTimeLeft e - secs } | e <- explosions gstate, explosionTimeLeft e > secs]
+
+  -- Combine the new and updated explosions
+  let finalExplosions = updatedExplosions ++ newExplosions
 
   -- Handle player collisions with enemies, removing only those that collide without affecting health
   let enemiesAfterPlayerCollisions = handlePlayerCollisions newPosition enemiesAfterBulletCollisions
@@ -66,7 +73,8 @@ step secs gstate = do
         cooldownTime = finalCooldownTime,
         backgroundPosition = finalBgPosition,
         backgroundPosition2 = finalBgPosition2,
-        score = updatedScore
+        score = updatedScore,
+        explosions = finalExplosions  -- Update explosions in game state
       }
 
 
@@ -85,13 +93,21 @@ isPlayerHitByEnemy (px, py) (Enemy (ex, ey) _) gstate
   | otherwise = gstate
 
 
-
--- Function to handle collisions between bullets and enemies
--- Returns the list of remaining enemies and the count of enemies hit by bullets
-handleCollisions :: [Bullet] -> [Enemy] -> IO ([Enemy], Int)
+-- Function to check for collisions between bullets and enemies
+handleCollisions :: [Bullet] -> [Enemy] -> IO ([Enemy], [Explosion], Int)
 handleCollisions bullets enemies = do
-  let (remainingEnemies, hitEnemies) = partitionEnemies bullets enemies
-  return (remainingEnemies, length hitEnemies)
+    let hitEnemies = filter (isHitByBullet bullets) enemies
+        remainingEnemies = filter (not . isHitByBullet bullets) enemies
+        enemiesHitCount = length hitEnemies
+        explosions = [Explosion (ex, ey) 0.5 | Enemy (ex, ey) _ <- hitEnemies]  -- Create explosions at hit positions
+
+    if length remainingEnemies < 2
+      then do
+        newEnemies <- spawnRandomEnemies 1
+        return (remainingEnemies ++ newEnemies, explosions, enemiesHitCount)
+      else return (remainingEnemies, explosions, enemiesHitCount)
+
+
 
 -- Helper function to partition enemies into hit and remaining ones
 partitionEnemies :: [Bullet] -> [Enemy] -> ([Enemy], [Enemy])
@@ -106,11 +122,6 @@ partitionEnemies bullets enemies =
 -- Only removes enemies that collide with the player without affecting player health
 handlePlayerCollisions :: (Float, Float) -> [Enemy] -> [Enemy]
 handlePlayerCollisions playerPos = filter (not . isHitByPlayer playerPos)
-
-
-
-
-
 
 -- Function to check if an enemy is hit by any bullet
 isHitByBullet :: [Bullet] -> Enemy -> Bool

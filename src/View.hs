@@ -28,25 +28,24 @@ drawScrollingBackground topImage bottomImage yOffset1 yOffset2 =
             translate 0 yOffset1 scaledTopImage      -- First image moves up
         ]
 
-
-
-
 view :: GameState -> IO Picture
 view gstate = do
   -- Load the BMP images for background
   topImage <- loadBMP "top.bmp"
   bottomImage <- loadBMP "bottom.bmp"
   -- Load the BMP images for the lives, dead state, and the 1-heart state
-  lifeImage <- loadBMP "fullhearts.bmp"  -- Update the path as needed
-  deadImage <- loadBMP "dead.bmp"        -- Update the path as needed
-  oneHeartImage <- loadBMP "1heart.bmp"  -- Update the path as needed
+  lifeImage <- loadBMP "fullhearts.bmp" 
+  deadImage <- loadBMP "dead.bmp"        
+  oneHeartImage <- loadBMP "1heart.bmp"  
   akRat <- loadBMP "akrat.bmp"
   akRat2 <- loadBMP "akrat2.bmp"
+  explosionImage <- loadBMP "explosion.bmp"
 
-  return (viewPure gstate lifeImage deadImage oneHeartImage akRat akRat2 topImage bottomImage)
+  return (viewPure gstate lifeImage deadImage oneHeartImage akRat akRat2 topImage bottomImage explosionImage)
 
-viewPure :: GameState -> Picture -> Picture -> Picture -> Picture -> Picture -> Picture -> Picture -> Picture
-viewPure gstate lifeImage deadImage oneHeartImage akRat akRat2 topImage bottomImage = 
+-- Update the function signature to include `explosionImage` as the last parameter
+viewPure :: GameState -> Picture -> Picture -> Picture -> Picture -> Picture -> Picture -> Picture -> Picture -> Picture
+viewPure gstate lifeImage deadImage oneHeartImage akRat akRat2 topImage bottomImage explosionImage = 
   case gameMode gstate of
     PreGame -> 
       -- Show the "Start Game" button and "Controls" button in the pre-game screen
@@ -81,7 +80,8 @@ viewPure gstate lifeImage deadImage oneHeartImage akRat akRat2 topImage bottomIm
                         _ -> renderLives lifeImage
             background = drawScrollingBackground topImage bottomImage (backgroundPosition gstate) (backgroundPosition2 gstate)
             scoreDisplay = translate (-600) 400 $ scale 0.3 0.3 $ color white $ text ("Score: " ++ show (score gstate))  -- Display score
-        in pictures (background : character : bulletsPics ++ enemiesPics ++ [lifePic, scoreDisplay])
+            explosionsPics = [translate ex ey (scale 0.5 0.5 explosionImage) | Explosion (ex, ey) _ <- explosions gstate]
+        in pictures (background : character : bulletsPics ++ enemiesPics ++ explosionsPics ++ [lifePic, scoreDisplay])
 
       else
         -- If the player is dead, show a "Game Over" message and "Start Over" button
@@ -144,10 +144,10 @@ renderLives lifeImage = translate (-700) 400 lifeImage
 renderDead :: Picture -> Picture
 renderDead deadImage = translate (-700) 400 deadImage
 
--- Render the dead image at a fixed position (same as the life image)
+-- Render AKRat at a fixed position
 renderAKRat :: Picture -> Picture
 renderAKRat akRat = translate (-450) (-200) $ scale 0.9 0.9 akRat
 
--- Render the dead image at a fixed position (same as the life image)
+-- Render AKRat2 at a fixed position
 renderAKRat2 :: Picture -> Picture
 renderAKRat2 akRat2 = translate (450) (-200) $ scale 0.9 0.9 akRat2
