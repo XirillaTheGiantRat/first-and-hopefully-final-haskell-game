@@ -61,6 +61,10 @@ viewPure gstate lifeImage deadImage oneHeartImage akRat akRat2 topImage bottomIm
         translate (-80) (-130) $ color black $ scale 0.2 0.2 (text "Controls"),  -- Button text
         translate (-30) (-120) $ thickRectangle 0 0 200 100 5 (makeColor (249/255) (156/255) (196/255) 1),
 
+        translate (-30) (-230) $ color white $ rectangleSolid 200 100,  -- Button background
+        translate (-90) (-240) $ color black $ scale 0.2 0.2 (text "Backstory"),  -- Button text
+        translate (-30) (-230) $ thickRectangle 0 0 200 100 5 (makeColor (249/255) (156/255) (196/255) 1),
+
         -- Welcome screen
         translate (-30) (110) $ color white $ rectangleSolid 800 100,  -- Button background
         translate (-300) (120) $ color black $ scale 0.2 0.2 (text "Welcome to Michael's Ratventures Pt2! <3"),  -- Button text
@@ -171,9 +175,9 @@ viewPure gstate lifeImage deadImage oneHeartImage akRat akRat2 topImage bottomIm
         rendercatUfo catufo,
         renderMichaelBow michaelbow,
         -- Back button (go back to PreGame or another mode)
-        translate (-30) (-200) $ color white $ rectangleSolid 200 100,  -- Button background
-        translate (-60) (-210) $ color black $ scale 0.2 0.2 (text "Back"),  -- Button text
-        translate (-30) (-200) $ thickRectangle 0 0 200 100 5 (makeColor (249/255) (156/255) (196/255) 1)  -- Button border
+        translate (-30) (-230) $ color white $ rectangleSolid 200 100,  -- Button background
+        translate (-60)(-240) $ color black $ scale 0.2 0.2 (text "Back"),  -- Button text
+        translate (-30) (-230) $ thickRectangle 0 0 200 100 5 (makeColor (249/255) (156/255) (196/255) 1)  -- Button border
       ]
       
 
