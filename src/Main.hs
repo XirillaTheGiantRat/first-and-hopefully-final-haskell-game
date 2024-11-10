@@ -20,7 +20,7 @@ main = do
   let initialState' = initialState characterPic  -- Start with no enemies initially
   
   -- Start the game with initial state
-  playIO (InWindow "Spaceshooter" (1500, 900) (0, 0)) -- Window title and size
+  playIO (InWindow "Michael's Ratventures Pt. 2" (1500, 900) (0, 0)) -- Window title and size
          white               -- Background color
          60                  -- Frames per second
          initialState'       -- Initial state with the character image

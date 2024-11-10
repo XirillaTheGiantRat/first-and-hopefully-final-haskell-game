@@ -5,37 +5,36 @@ import Graphics.Gloss.Interface.IO.Game
 import Data.List (sortBy)
 import System.IO (readFile, writeFile, appendFile)
 import Graphics.Gloss
-import System.Random (randomRIO)  -- For random generation of enemies
+import System.Random (randomRIO)  
 
--- Movement amount per frame
+-- player speed
 moveAmount :: Float
 moveAmount = 2
 
 step :: Float -> GameState -> IO GameState
 step secs gstate =
   if paused gstate then 
-    return gstate  -- If the game is paused, return the state as is
+    return gstate  
   else do
-    -- Update the elapsed time and cooldown time
     let newElapsedTime = elapsedTime gstate + secs
         newCooldownTime = max 0 (cooldownTime gstate - secs)
         
-    -- Update background positions for scrolling effect
+    -- scrolling effect for the background
     let newBgPosition = backgroundPosition gstate - (100 * secs)
         newBgPosition2 = backgroundPosition2 gstate - (100 * secs)
         finalBgPosition = if newBgPosition <= -900 then 900 else newBgPosition
         finalBgPosition2 = if newBgPosition2 <= -900 then 900 else newBgPosition2
 
-    -- Update player position based on active keys if the player is alive
+    -- Update player position
     let (x, y) = position gstate
         newPosition = if isAlive gstate
                       then foldl move (x, y) (activeKeys gstate)
                       else (x, y)
 
-    -- Move existing bullets upwards and filter out those off-screen
+    -- Move existing bullets
     let updatedBullets = filter (\(Bullet (_, by)) -> by <= 900) $ map moveBullet (bullets gstate)
 
-    -- Generate a new bullet if the 'f' key is pressed and cooldown allows
+    -- Generate a new bullet
     let newBullet = if 'f' `elem` activeKeys gstate && newCooldownTime == 0 && isAlive gstate
                     then [Bullet (x, y + 20)]
                     else []
@@ -44,44 +43,38 @@ step secs gstate =
                             then 0.2
                             else newCooldownTime
 
-    -- Ensure at least two enemies are on screen
+    -- 2 enemies on screen
     enemiesToAdd' <- if length (enemies gstate) < 2
                      then do
                        newEnemies <- spawnRandomEnemies 1
                        return (newEnemies ++ enemies gstate)
                      else return (enemies gstate)
 
-    -- Move all enemies according to their logic, potentially tracking player position if needed
+    -- Enemy movement logic
     let updatedEnemies = map (`moveEnemy` (x, y)) enemiesToAdd'
 
-    -- Handle collisions between bullets and enemies
+    -- Collision bullet enemy
     (enemiesAfterCollisions, newExplosions, enemiesHitCount) <- handleCollisions allBullets updatedEnemies
 
-    -- Update explosions and filter out those whose time has expired
+    -- Explosion animation
     let updatedExplosions = [e { explosionTimeLeft = explosionTimeLeft e - secs } | e <- explosions gstate, explosionTimeLeft e > secs]
         finalExplosions = updatedExplosions ++ newExplosions
 
-    -- Check for collisions between the player and remaining enemies
-    let (enemiesAfterPlayerCollisions, playerHitCount, newIsAlive, newGameMode) = handlePlayerCollisions newPosition enemiesAfterCollisions gstate
+    -- Collision player enemy
+    let (enemiesAfterPlayerCollisions, playerHitCount) = handlePlayerCollisions newPosition enemiesAfterCollisions
 
-
-    -- Handle player collisions with enemies, updating both enemies and player lives
-    let (enemiesAfterPlayerCollisions, newLives, newIsAlive, newGameMode) = handlePlayerCollisions newPosition enemiesAfterCollisions gstate
-        updatedScore = score gstate + enemiesHitCount
-        
+    -- Player health
     let newHealth = lives gstate - playerHitCount
-        finalHealth = max 0 newHealth
+        finalHealth = max 0 newHealth  
 
-    -- Update score based on enemies hit
+    -- Update score 
     let updatedScore = score gstate + enemiesHitCount
-    -- Return the updated game state with the new values
-    if newGameMode == GameOver && not (scoreSaved gstate)
+
+    -- Gameover check
+    if gameMode gstate == GameOver || finalHealth <= 0
       then do
-        writeHighScore (score gstate)  -- Save the score to the high scores file
-        return gstate {
-          gameMode = newGameMode,
-          scoreSaved = True            -- Set scoreSaved to True
-        }
+        endGame gstate 
+        return gstate
       else
         return gstate {
           elapsedTime = newElapsedTime,
@@ -108,7 +101,6 @@ isPlayerHitByEnemy (px, py) (Enemy (ex, ey) _) gstate
           newGameMode = if newLives <= 0 then GameOver else gameMode gstate
       in gstate { lives = newLives, isAlive = newIsAlive, gameMode = newGameMode }
   | otherwise = gstate
-
 
 -- Function to check for collisions between bullets and enemies
 handleCollisions :: [Bullet] -> [Enemy] -> IO ([Enemy], [Explosion], Int)
@@ -265,7 +257,7 @@ input e gstate = case e of
         return resetState { gameMode = InGame }
     else if gameMode gstate == ControlsScreen && isBottomClicked (mx, my)
       then return gstate { gameMode = PreGame }
-    else if gameMode gstate == BackStory && isLowestClicked (mx, my)
+    else if gameMode gstate == BackStory && isLowestLowestClicked (mx, my)
       then return gstate { gameMode = PreGame }
     else if gameMode gstate == GameOver && isBottomClicked (mx, my)
       then do
@@ -277,9 +269,6 @@ input e gstate = case e of
   -- Other event handling...
   _ -> return gstate
 
-
-
-
 -- Function to check if the controls button was clicked
 isBottomClicked :: (Float, Float) -> Bool
 isBottomClicked (mx, my) =
@@ -289,6 +278,11 @@ isBottomClicked (mx, my) =
 isLowestClicked :: (Float, Float) -> Bool
 isLowestClicked (mx, my) =
   mx >= -130 && mx <= 70 && my >= -280 && my <= -180  -- Adjust button position and size as needed
+
+-- Function to check if the controls button was clicked
+isLowestLowestClicked :: (Float, Float) -> Bool
+isLowestLowestClicked (mx, my) =
+  mx >= -130 && mx <= 70 && my >= -390 && my <= -290  -- Adjust button position and size as needed
 
 -- Function to check if the start over button was clicked
 isTopClicked :: (Float, Float) -> Bool
