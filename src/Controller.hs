@@ -97,7 +97,7 @@ step secs gstate =
           scoreSaved = scoreSaved gstate  
         }
 
--- Function to check if the player has collided with an enemy and update the game state
+-- collision player enemy
 isPlayerHitByEnemy :: (Float, Float) -> Enemy -> GameState -> GameState
 isPlayerHitByEnemy (px, py) (Enemy (ex, ey) _) gstate
   | isAlive gstate && abs (px - ex) < 20 && abs (py - ey) < 20 = 
@@ -107,8 +107,7 @@ isPlayerHitByEnemy (px, py) (Enemy (ex, ey) _) gstate
       in gstate { lives = newLives, isAlive = newIsAlive, gameMode = newGameMode }
   | otherwise = gstate
 
-
--- Function to check for collisions between bullets and enemies
+-- collision enmy bullet
 handleCollisions :: [Bullet] -> [Enemy] -> IO ([Enemy], [Explosion], Int)
 handleCollisions bullets enemies = do
     let hitEnemies = filter (isHitByBullet bullets) enemies
@@ -122,9 +121,7 @@ handleCollisions bullets enemies = do
         return (remainingEnemies ++ newEnemies, explosions, enemiesHitCount)
       else return (remainingEnemies, explosions, enemiesHitCount)
 
-
-
--- Helper function to partition enemies into hit and remaining ones
+-- Helper function
 partitionEnemies :: [Bullet] -> [Enemy] -> ([Enemy], [Enemy])
 partitionEnemies bullets enemies =
   foldr (\enemy (remaining, hit) ->
@@ -133,40 +130,31 @@ partitionEnemies bullets enemies =
             else (enemy : remaining, hit))
         ([], []) enemies
 
-
--- Function to handle player collisions with enemies, updating the enemies list and lives
+-- player enemy collision
 handlePlayerCollisions :: (Float, Float) -> [Enemy] -> GameState -> ([Enemy], Int, Bool, GameMode)
 handlePlayerCollisions playerPos enemies gstate =
   let 
-      -- Filter out enemies that collide with the player
       remainingEnemies = filter (not . isHitByPlayer playerPos) enemies
-      -- Count how many enemies hit the player
       enemiesHitCount = length enemies - length remainingEnemies
-      -- Update lives based on the number of collisions
       newLives = lives gstate - enemiesHitCount
-      -- Check if player is still alive after losing lives
       newIsAlive = newLives > 0
-      -- Set game mode to GameOver if no lives left
       newGameMode = if newLives <= 0 then GameOver else gameMode gstate
   in (remainingEnemies, newLives, newIsAlive, newGameMode)
 
--- Helper function to check if the player is near an enemy (within a collision radius)
+-- Helper function 
 isNearTo :: (Float, Float) -> (Float, Float) -> Bool
 isNearTo (px, py) (ex, ey) = (px - ex)^2 + (py - ey)^2 < 25
 
-
-
--- Function to check if an enemy is hit by any bullet
+-- enemy hit by bullet
 isHitByBullet :: [Bullet] -> Enemy -> Bool
 isHitByBullet bullets enemy = any (isBulletHit enemy) bullets
 
--- Function to check if a specific bullet hits an enemy
+-- helper
 isBulletHit :: Enemy -> Bullet -> Bool
 isBulletHit (Enemy (ex, ey) _) (Bullet (bx, by)) =
-  -- Check if the bullet's position is close enough to the enemy's position
-  abs (bx - ex) < 20 && abs (by - ey) < 20  -- Adjust 20 to the appropriate "hit radius"
+  abs (bx - ex) < 20 && abs (by - ey) < 20  
 
--- Function to check for collisions between player and enemies
+-- collisions player enemies
 handleEnemyCollisions :: (Float, Float) -> [Enemy] -> GameState -> GameState
 handleEnemyCollisions (px, py) enemies gstate = 
   let remainingEnemies = filter (not . isHitByPlayer (px, py)) enemies
@@ -176,87 +164,72 @@ handleEnemyCollisions (px, py) enemies gstate =
       newGameMode = if newLives <= 0 then GameOver else gameMode gstate
   in gstate { enemies = remainingEnemies, lives = newLives, isAlive = newIsAlive, gameMode = newGameMode }
 
--- Function to check if an enemy is hit by player or has passed the bottom of the screen
+-- enemy hit by player or at bottom of screen
 isHitByPlayer :: (Float, Float) -> Enemy -> Bool
 isHitByPlayer (px, py) (Enemy (ex, ey) _) =
-  -- Check if the player is near the enemy (within the "hit radius")
   (abs (px - ex) < 20 && abs (py - ey) < 20) || 
-  -- Check if the enemy has reached y = -450, indicating it has passed the bottom of the screen
   ey <= -450
 
-
--- Function to check if a specific enemy collides with the player
 isPlayerHit :: Enemy -> (Float, Float) -> Bool
 isPlayerHit (Enemy (ex, ey) _) (px, py) =
-  abs (px - ex) < 20 && abs (py - ey) < 20  -- Adjust the "hit radius" as needed
+  abs (px - ex) < 20 && abs (py - ey) < 20  
 
 screenWidth :: Float
-screenWidth = 400.0  -- Replace with your screen's width as Float
+screenWidth = 400.0 
 
--- Function to spawn a certain number of enemies at random positions
+-- spawn enemies on random positions
 spawnRandomEnemies :: Int -> IO [Enemy]
 spawnRandomEnemies n = do
-  enemies <- mapM spawnEnemy [1]  -- Create 1 enemy at a time
+  enemies <- mapM spawnEnemy [1] 
   return enemies
   where
     spawnEnemy _ = do
-      x <- randomRIO (-700.0, 700.0)  -- Random x position within the new screen width range
-      let y = 400.0  -- Fixed y position at 400 (can be adjusted as needed)
-      enemyPic <- loadBMP "enemies.bmp"  -- Load enemy image
-      return $ Enemy (x, y) enemyPic  -- Create and return an enemy
+      x <- randomRIO (-700.0, 700.0)  
+      let y = 400.0 
+      enemyPic <- loadBMP "enemies.bmp"  
+      return $ Enemy (x, y) enemyPic  
 
--- Move the bullet upwards
+-- Move bullet upwards
 moveBullet :: Bullet -> Bullet
-moveBullet (Bullet (x, y)) = Bullet (x, y + 5)  -- Move the bullet upwards by 5 units
+moveBullet (Bullet (x, y)) = Bullet (x, y + 5) 
 
 moveEnemy :: Enemy -> (Float, Float) -> Enemy
 moveEnemy (Enemy (ex, ey) pic) (px, py) =
   let
-    -- If the enemy is higher than the player, move horizontally towards the player
-    newX | ey > py && ex < px = ex + 1  -- Move right if the enemy is to the left of the player
-         | ey > py && ex > px = ex - 1  -- Move left if the enemy is to the right of the player
-         | otherwise = ex  -- No horizontal movement once the enemy is below or aligned with the player
+    newX | ey > py && ex < px = ex + 1  
+         | ey > py && ex > px = ex - 1 
+         | otherwise = ex  
+    newY | ey > py = ey - 2 
+         | otherwise = ey - 2  
+  in Enemy (newX, newY) pic  
 
-    -- If the enemy is higher than the player, move towards the player (upward)
-    -- Otherwise, move downward if the enemy is below the player
-    newY | ey > py = ey - 2  -- Move up towards the player if the enemy is above the player
-         | otherwise = ey - 2  -- Move down if the enemy is below the player
-
-  in Enemy (newX, newY) pic  -- Return the updated enemy with new position
-
-
-
-
--- Update position based on key direction with boundary checks
+-- move player
 move :: (Float, Float) -> Char -> (Float, Float)
-move (x, y) 'w' = (x, min (y + moveAmount) 420)  -- Move up
-move (x, y) 'a' = (max (x - moveAmount) (-720), y)  -- Move left with boundary check
-move (x, y) 's' = (x, max (y - moveAmount) (-430))  -- Move down
-move (x, y) 'd' = (min (x + moveAmount) 720, y)  -- Move right with boundary check
-move pos _      = pos  -- Ignore other keys
-
+move (x, y) 'w' = (x, min (y + moveAmount) 420) 
+move (x, y) 'a' = (max (x - moveAmount) (-720), y) 
+move (x, y) 's' = (x, max (y - moveAmount) (-430)) 
+move (x, y) 'd' = (min (x + moveAmount) 720, y) 
+move pos _      = pos  
 
 input :: Event -> GameState -> IO GameState
 input e gstate = case e of
-  -- Toggle the paused state when 'p' is pressed
+  -- pause when p
   EventKey (Char 'p') Down _ _ -> return gstate { paused = not (paused gstate) }
 
-  -- Handle other input events like movement and shooting
   EventKey (Char c) Down _ _    | c `elem` "wasd" -> return $ gstate { activeKeys = c : activeKeys gstate }
   EventKey (Char c) Up _ _      | c `elem` "wasd" -> return $ gstate { activeKeys = filter (/= c) (activeKeys gstate) }
 
-  -- Handle shooting with "f" key
   EventKey (Char 'f') Down _ _  -> return $ gstate { activeKeys = 'f' : activeKeys gstate }
   EventKey (Char 'f') Up _ _    -> return $ gstate { activeKeys = filter (/= 'f') (activeKeys gstate) }
 
-  -- Handle mouse clicks for game modes
+  -- mouse clicks
   EventKey (MouseButton LeftButton) Down _ (mx, my) -> 
     if gameMode gstate == PreGame && isTopClicked (mx, my)
-    then return gstate { gameMode = InGame }  -- Start the game
+    then return gstate { gameMode = InGame }
     else if gameMode gstate == PreGame && isBottomClicked (mx, my)
-      then return gstate { gameMode = ControlsScreen }  -- Show controls screen
+      then return gstate { gameMode = ControlsScreen } 
     else if gameMode gstate == PreGame && isLowestClicked (mx, my)
-      then return gstate { gameMode = BackStory }  -- Show controls screen
+      then return gstate { gameMode = BackStory } 
     else if gameMode gstate == GameOver && isTopClicked (mx, my)
       then do
         let resetState = resetGameState gstate
@@ -272,49 +245,42 @@ input e gstate = case e of
     else
       return gstate
 
-  -- Other event handling...
   _ -> return gstate
 
--- Function to check if the controls button was clicked
+-- second button
 isBottomClicked :: (Float, Float) -> Bool
 isBottomClicked (mx, my) =
-  mx >= -130 && mx <= 70 && my >= -170 && my <= -70  -- Adjust button position and size as needed
+  mx >= -130 && mx <= 70 && my >= -170 && my <= -70
 
--- Function to check if the controls button was clicked
+-- third button
 isLowestClicked :: (Float, Float) -> Bool
 isLowestClicked (mx, my) =
-  mx >= -130 && mx <= 70 && my >= -280 && my <= -180  -- Adjust button position and size as needed
+  mx >= -130 && mx <= 70 && my >= -280 && my <= -180  
 
--- Function to check if the controls button was clicked
+-- lowest button
 isLowestLowestClicked :: (Float, Float) -> Bool
 isLowestLowestClicked (mx, my) =
-  mx >= -130 && mx <= 70 && my >= -390 && my <= -290  -- Adjust button position and size as needed
+  mx >= -130 && mx <= 70 && my >= -390 && my <= -290  
 
--- Function to check if the start over button was clicked
+-- first button
 isTopClicked :: (Float, Float) -> Bool
 isTopClicked (mx, my) =
-  mx >= -130 && mx <= 70 && my >= -60 && my <= 40  -- Adjust button position and size as needed
+  mx >= -130 && mx <= 70 && my >= -60 && my <= 40  
 
--- Function to reset the game state to the initial state
--- Reset the game state to its initial values
+-- reset values
 resetGameState :: GameState -> GameState
 resetGameState gstate = gstate {
-  position = (0, 0),  -- Reset player position
-  activeKeys = [],    -- Clear active keys
-  bullets = [],       -- Clear bullets
-  enemies = [],       -- Clear enemies
-  isAlive = True,     -- Reset player's life
-  lives = 2,          -- Set the starting number of lives
-  elapsedTime = 0,    -- Reset the elapsed time
-  cooldownTime = 0,    -- Reset cooldown for shooting
+  position = (0, 0),  
+  activeKeys = [],   
+  bullets = [],      
+  enemies = [],     
+  isAlive = True,   
+  lives = 2,       
+  elapsedTime = 0,   
+  cooldownTime = 0,   
   backgroundPosition = 0,
   backgroundPosition2 = 900
-
-
 }
-
-
-
 
 -- Path to high scores file
 highScoreFile :: FilePath

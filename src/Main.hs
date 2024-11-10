@@ -9,18 +9,13 @@ import Graphics.Gloss
 
 main :: IO ()
 main = do
-  -- let testScore = 60
-  -- writeHighScore testScore <-- this was for testing
-  -- Load the BMP image for the spaceship
-  -- Load the BMP image for the spaceship and the enemies
+  -- Load the BMPs
   characterPic <- loadBMP "character.bmp"
-  enemyPic <- loadBMP "enemies.bmp"  -- Load enemy image
+  enemyPic <- loadBMP "enemies.bmp" 
   
-  -- Initialize the game state with the character image and no enemies
-  let initialState' = initialState characterPic  -- Start with no enemies initially
+  let initialState' = initialState characterPic  
   
-  -- Start the game with initial state
-  playIO (InWindow "Michael's Ratventures Pt. 2" (1500, 900) (0, 0)) -- Window title and size
+  playIO (InWindow "Michael's Ratventures Pt. 2" (1500, 900) (0, 0))
          white               -- Background color
          60                  -- Frames per second
          initialState'       -- Initial state with the character image
