@@ -51,8 +51,14 @@ step secs gstate = do
                            then 0.2
                            else newCooldownTime
 
-  -- Get the updated enemies, filtering out those hit by bullets and counting the hits
-  (enemiesAfterCollisions, enemiesHitCount) <- handleCollisions allBullets enemiesToAdd'
+  -- Handle collisions and add explosions
+  (enemiesAfterCollisions, newExplosions, enemiesHitCount) <- handleCollisions allBullets enemiesToAdd'
+
+  -- Update explosions, reducing their time left and removing those that are finished
+  let updatedExplosions = [e { explosionTimeLeft = explosionTimeLeft e - secs } | e <- explosions gstate, explosionTimeLeft e > secs]
+
+  -- Combine the new and updated explosions
+  let finalExplosions = updatedExplosions ++ newExplosions
 
   -- Update the score based on the number of enemies hit
   let updatedScore = score gstate + enemiesHitCount
@@ -74,7 +80,8 @@ step secs gstate = do
         cooldownTime = finalCooldownTime,
         backgroundPosition = finalBgPosition,
         backgroundPosition2 = finalBgPosition2,
-        score = updatedScore
+        score = updatedScore,
+        explosions = finalExplosions  -- Update explosions in game state
       }
 
 
@@ -90,21 +97,19 @@ isPlayerHitByEnemy (px, py) (Enemy (ex, ey) _) gstate
       in gstate { lives = newLives, isAlive = newIsAlive, gameMode = newGameMode }
   | otherwise = gstate
 
-
-
-
-
-
 -- Function to check for collisions between bullets and enemies
-handleCollisions :: [Bullet] -> [Enemy] -> IO ([Enemy], Int)
+handleCollisions :: [Bullet] -> [Enemy] -> IO ([Enemy], [Explosion], Int)
 handleCollisions bullets enemies = do
-  let remainingEnemies = filter (not . isHitByBullet bullets) enemies
-      enemiesHit = length enemies - length remainingEnemies
-  if length remainingEnemies < 2
-    then do
-      newEnemies <- spawnRandomEnemies 1
-      return (remainingEnemies ++ newEnemies, enemiesHit)
-    else return (remainingEnemies, enemiesHit)
+    let hitEnemies = filter (isHitByBullet bullets) enemies
+        remainingEnemies = filter (not . isHitByBullet bullets) enemies
+        enemiesHitCount = length hitEnemies
+        explosions = [Explosion (ex, ey) 0.5 | Enemy (ex, ey) _ <- hitEnemies]  -- Create explosions at hit positions
+
+    if length remainingEnemies < 2
+      then do
+        newEnemies <- spawnRandomEnemies 1
+        return (remainingEnemies ++ newEnemies, explosions, enemiesHitCount)
+      else return (remainingEnemies, explosions, enemiesHitCount)
 
 -- Function to check if an enemy is hit by any bullet
 isHitByBullet :: [Bullet] -> Enemy -> Bool

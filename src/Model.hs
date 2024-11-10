@@ -41,13 +41,14 @@ data GameState = GameState {
                    lives             :: Int,  -- Add lives to track player lives
                    backgroundPosition :: Float,  -- Position of the first background
                    backgroundPosition2 :: Float,  -- Position of the second background
-                   score             :: Int  -- Add score to track player's score
+                   score             :: Int,  -- Add score to track player's score
+                   explosions :: [Explosion]  -- Add existing explosions
                  }
 
 
 -- Initialize the game state with 2 lives
 initialState :: Picture -> GameState
-initialState pic = GameState ShowNothing 0 (0, 0) [] pic [] [] 0 True PreGame 2 0 900 0 
+initialState pic = GameState ShowNothing 0 (0, 0) [] pic [] [] 0 True PreGame 2 0 900 0 []
 
 
 
@@ -57,3 +58,8 @@ randomPosition = do
   x <- randomRIO (-750, 750)  -- random x between -750 and 750 for the screen width
   y <- randomRIO (-450, 450)  -- random y between -450 and 450 for the screen height
   return (x, y)
+
+data Explosion = Explosion {
+    explosionPosition :: (Float, Float),
+    explosionTimeLeft :: Float
+}
