@@ -64,18 +64,24 @@ step secs gstate =
     -- Check for collisions between the player and remaining enemies
     let (enemiesAfterPlayerCollisions, playerHitCount) = handlePlayerCollisions newPosition enemiesAfterCollisions
 
-    -- Calculate the player's new health after any collisions
+
+    -- Handle player collisions with enemies, updating both enemies and player lives
+    let (enemiesAfterPlayerCollisions, newLives, newIsAlive, newGameMode) = handlePlayerCollisions newPosition enemiesAfterCollisions gstate
+        updatedScore = score gstate + enemiesHitCount
+        
     let newHealth = lives gstate - playerHitCount
-        finalHealth = max 0 newHealth  -- Prevent negative health
+        finalHealth = max 0 newHealth
 
     -- Update score based on enemies hit
     let updatedScore = score gstate + enemiesHitCount
-
-    -- Check for Game Over condition
-    if gameMode gstate == GameOver || finalHealth <= 0
+    -- Return the updated game state with the new values
+    if newGameMode == GameOver && not (scoreSaved gstate)
       then do
-        endGame gstate  -- Save the score to the high scores file if game is over
-        return gstate
+        writeHighScore (score gstate)  -- Save the score to the high scores file
+        return gstate {
+          gameMode = newGameMode,
+          scoreSaved = True            -- Set scoreSaved to True
+        }
       else
         return gstate {
           elapsedTime = newElapsedTime,
@@ -86,16 +92,12 @@ step secs gstate =
           backgroundPosition = finalBgPosition,
           backgroundPosition2 = finalBgPosition2,
           score = updatedScore,
-          lives = finalHealth,
-          explosions = finalExplosions
+          explosions = finalExplosions,
+          lives = newLives,
+          isAlive = newIsAlive,
+          gameMode = newGameMode,
+          scoreSaved = scoreSaved gstate  -- Keep current scoreSaved value
         }
-
-
-
-
-
-
-
 
 -- Function to check if the player has collided with an enemy and update the game state
 isPlayerHitByEnemy :: (Float, Float) -> Enemy -> GameState -> GameState
@@ -133,23 +135,27 @@ partitionEnemies bullets enemies =
             else (enemy : remaining, hit))
         ([], []) enemies
 
-handlePlayerCollisions :: (Float, Float) -> [Enemy] -> ( [Enemy], Int )
-handlePlayerCollisions playerPos enemies =
-  let (remainingEnemies, damagedEnemies) = foldl handleCollision ([], 0) enemies
-  in (remainingEnemies, damagedEnemies)
-  where
-    -- Check for collisions with each enemy
-    handleCollision (accEnemies, damageCount) enemy@(Enemy (ex, ey) _) =
-      if (playerPos `isNearTo` (ex, ey)) then
-        -- If a collision occurs, remove the enemy and count the damage
-        (accEnemies, damageCount + 1)
-      else
-        -- Keep the enemy if no collision
-        (enemy : accEnemies, damageCount)
+
+-- Function to handle player collisions with enemies, updating the enemies list and lives
+handlePlayerCollisions :: (Float, Float) -> [Enemy] -> GameState -> ([Enemy], Int, Bool, GameMode)
+handlePlayerCollisions playerPos enemies gstate =
+  let 
+      -- Filter out enemies that collide with the player
+      remainingEnemies = filter (not . isHitByPlayer playerPos) enemies
+      -- Count how many enemies hit the player
+      enemiesHitCount = length enemies - length remainingEnemies
+      -- Update lives based on the number of collisions
+      newLives = lives gstate - enemiesHitCount
+      -- Check if player is still alive after losing lives
+      newIsAlive = newLives > 0
+      -- Set game mode to GameOver if no lives left
+      newGameMode = if newLives <= 0 then GameOver else gameMode gstate
+  in (remainingEnemies, newLives, newIsAlive, newGameMode)
 
 -- Helper function to check if the player is near an enemy (within a collision radius)
 isNearTo :: (Float, Float) -> (Float, Float) -> Bool
 isNearTo (px, py) (ex, ey) = (px - ex)^2 + (py - ey)^2 < 25
+
 
 
 -- Function to check if an enemy is hit by any bullet
