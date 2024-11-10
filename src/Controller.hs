@@ -21,18 +21,12 @@ step secs gstate = do
       finalBgPosition2 = if newBgPosition2 <= -900 then 900 else newBgPosition2
       newCooldownTime = max 0 (cooldownTime gstate - secs)
 
-  -- Ensure two enemies are always present
-  enemiesToAdd' <- if length (enemies gstate) < 2
-                   then do
-                     newEnemies <- spawnRandomEnemies 1
-                     return (newEnemies ++ enemies gstate)
-                   else return (enemies gstate)
+
 
   -- Move all enemies upwards
-  let updatedEnemies = map moveEnemy enemiesToAdd'  -- Move all enemies upwards
 
   -- Player movement and bullet handling
-  let (x, y) = position gstate
+  let (x, y) = position gstate  -- Make sure these are defined before use
       newPosition = if isAlive gstate
                     then foldl move (x, y) (activeKeys gstate)
                     else (x, y)
@@ -44,6 +38,18 @@ step secs gstate = do
       finalCooldownTime = if 'f' `elem` activeKeys gstate && newCooldownTime == 0 && isAlive gstate
                            then 0.2
                            else newCooldownTime
+
+-- Ensure two enemies are always present
+  enemiesToAdd' <- if length (enemies gstate) < 2
+                   then do
+                     newEnemies <- spawnRandomEnemies 1
+                     return (newEnemies ++ enemies gstate)
+                   else return (enemies gstate)
+
+-- Move all enemies upwards
+  let updatedEnemies = map (`moveEnemy` (x, y)) enemiesToAdd'
+
+  -- Player movement and bullet handling
 
 
   -- Handle collisions and add explosions
@@ -174,9 +180,23 @@ spawnRandomEnemies n = do
 moveBullet :: Bullet -> Bullet
 moveBullet (Bullet (x, y)) = Bullet (x, y + 5)  -- Move the bullet upwards by 5 units
 
--- Move the enemy upwards
-moveEnemy :: Enemy -> Enemy
-moveEnemy (Enemy (x, y) pic) = Enemy (x, y - 2) pic  -- Move the enemy upwards by 2 units
+moveEnemy :: Enemy -> (Float, Float) -> Enemy
+moveEnemy (Enemy (ex, ey) pic) (px, py) =
+  let
+    -- If the enemy is higher than the player, move horizontally towards the player
+    newX | ey > py && ex < px = ex + 1  -- Move right if the enemy is to the left of the player
+         | ey > py && ex > px = ex - 1  -- Move left if the enemy is to the right of the player
+         | otherwise = ex  -- No horizontal movement once the enemy is below or aligned with the player
+
+    -- If the enemy is higher than the player, move towards the player (upward)
+    -- Otherwise, move downward if the enemy is below the player
+    newY | ey > py = ey - 2  -- Move up towards the player if the enemy is above the player
+         | otherwise = ey - 4  -- Move down if the enemy is below the player
+
+  in Enemy (newX, newY) pic  -- Return the updated enemy with new position
+
+
+
 
 -- Update position based on key direction with boundary checks
 move :: (Float, Float) -> Char -> (Float, Float)
