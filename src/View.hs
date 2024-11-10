@@ -40,11 +40,13 @@ view gstate = do
   akRat <- loadBMP "akrat.bmp"
   akRat2 <- loadBMP "akrat2.bmp"
   explosionImage <- loadBMP "explosion.bmp"
+  michaelbow <- loadBMP "michaelbow.bmp"
+  catufo <- loadBMP "catufo.bmp"
 
-  return (viewPure gstate lifeImage deadImage oneHeartImage akRat akRat2 topImage bottomImage explosionImage)
+  return (viewPure gstate lifeImage deadImage oneHeartImage akRat akRat2 topImage bottomImage explosionImage michaelbow catufo)
 
-viewPure :: GameState -> Picture -> Picture -> Picture -> Picture -> Picture -> Picture -> Picture -> Picture -> Picture
-viewPure gstate lifeImage deadImage oneHeartImage akRat akRat2 topImage bottomImage explosionImage = 
+viewPure :: GameState -> Picture -> Picture -> Picture -> Picture -> Picture -> Picture -> Picture -> Picture -> Picture -> Picture -> Picture
+viewPure gstate lifeImage deadImage oneHeartImage akRat akRat2 topImage bottomImage explosionImage michaelbow catufo = 
   case gameMode gstate of
     PreGame -> 
       -- Show the "Start Game" button and "Controls" button in the pre-game screen
@@ -58,6 +60,10 @@ viewPure gstate lifeImage deadImage oneHeartImage akRat akRat2 topImage bottomIm
         translate (-30) (-120) $ color white $ rectangleSolid 200 100,  -- Button background
         translate (-80) (-130) $ color black $ scale 0.2 0.2 (text "Controls"),  -- Button text
         translate (-30) (-120) $ thickRectangle 0 0 200 100 5 (makeColor (249/255) (156/255) (196/255) 1),
+
+        translate (-30) (-230) $ color white $ rectangleSolid 200 100,  -- Button background
+        translate (-90) (-240) $ color black $ scale 0.2 0.2 (text "Backstory"),  -- Button text
+        translate (-30) (-230) $ thickRectangle 0 0 200 100 5 (makeColor (249/255) (156/255) (196/255) 1),
 
         -- Welcome screen
         translate (-30) (110) $ color white $ rectangleSolid 800 100,  -- Button background
@@ -148,7 +154,32 @@ viewPure gstate lifeImage deadImage oneHeartImage akRat akRat2 topImage bottomIm
         renderAKRat akRat,
         renderAKRat2 akRat2,
         translate (-175) (-400) $ color black $ scale 0.15 0.15 (text "Michael is ready to go into space!!!")  -- Additional text
+        ]
+    BackStory -> 
+      -- BackStory game mode (render the backstory page)
+      pictures [
+        -- Dit ff goed spacen en sizen straks + back button tekeken
+        translate (-300) 150 $ color white $ rectangleSolid 800 500,  -- Background box
+        translate (-250) 200 $ color black $ scale 0.5 0.5 (text "Backstory:") ,  -- Title
+        translate (-250) 150 $ color black $ scale 0.3 0.3 (text "After you helped Michael in Michael's Ratventures (MSO)"),  -- Example text
+        translate (-250) 100 $ color black $ scale 0.3 0.3 (text "find his way to his spaceship"),  -- Example continuation
+        translate (-250) 50 $ color black $ scale 0.3 0.3 (text "Michael needs your help once more!"),  -- Example continuation
+
+        translate (250) 50 $ color black $ scale 0.3 0.3 (text "The thing is Michael has never been in space!"),  -- Example text
+        translate (250) 0 $ color black $ scale 0.3 0.3 (text "He has chosen you, his dearest friend,"),  -- Example continuation
+        translate (250) (-50) $ color black $ scale 0.3 0.3 (text " to help him navigate the galaxy in his conquest of returning to his people."),  -- Example continuation
+
+        translate (-250) (-100) $ color black $ scale 0.3 0.3 (text "But be aware! There are many vile creatures in space"),  -- Example text
+        translate (-250) (-150) $ color black $ scale 0.3 0.3 (text "that will no doubt see Michael as a yummy snack like this cat here!"),  -- Example continuation
+        translate (-250) (-200) $ color black $ scale 0.3 0.3 (text "Will you help Michael find his way home? "),  -- Example continuation
+        rendercatUfo catufo,
+        renderMichaelBow michaelbow,
+        -- Back button (go back to PreGame or another mode)
+        translate (-30) (-230) $ color white $ rectangleSolid 200 100,  -- Button background
+        translate (-60)(-240) $ color black $ scale 0.2 0.2 (text "Back"),  -- Button text
+        translate (-30) (-230) $ thickRectangle 0 0 200 100 5 (makeColor (249/255) (156/255) (196/255) 1)  -- Button border
       ]
+      
 
 
 -- Render the full life image at a fixed position
@@ -166,3 +197,11 @@ renderAKRat akRat = translate (-450) (-200) $ scale 0.9 0.9 akRat
 -- Render AKRat2 at a fixed position
 renderAKRat2 :: Picture -> Picture
 renderAKRat2 akRat2 = translate (450) (-200) $ scale 0.9 0.9 akRat2
+
+-- Render AKRat2 at a fixed position
+rendercatUfo :: Picture -> Picture
+rendercatUfo catufo = translate (-450) (-200) $ scale 0.9 0.9 catufo
+
+-- Render AKRat2 at a fixed position
+renderMichaelBow :: Picture -> Picture
+renderMichaelBow michaelbow = translate (-450) (200) $ scale 0.9 0.9 michaelbow
