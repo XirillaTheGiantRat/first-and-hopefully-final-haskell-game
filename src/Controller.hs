@@ -28,7 +28,6 @@ step secs gstate = do
                      return (newEnemies ++ enemies gstate)
                    else return (enemies gstate)
 
-
   -- Player movement and bullet handling
   let (x, y) = position gstate
       newPosition = if isAlive gstate
@@ -53,19 +52,25 @@ step secs gstate = do
   -- Combine the new and updated explosions
   let finalExplosions = updatedExplosions ++ newExplosions
 
-  -- Handle player collisions with enemies, removing only those that collide without affecting health
+  -- Handle player collisions with enemies (removes enemies from the list)
   let enemiesAfterPlayerCollisions = handlePlayerCollisions newPosition enemiesAfterBulletCollisions
 
+  -- Call `isPlayerHitByEnemy` for each enemy that collides with the player
+  let updatedState = foldl (\gs enemy -> 
+                            if isPlayerHit enemy newPosition
+                            then isPlayerHitByEnemy gs
+                            else gs) gstate enemiesAfterPlayerCollisions
+
   -- Update the score based on the number of enemies hit by bullets
-  let updatedScore = score gstate + enemiesHitCount
+  let updatedScore = score updatedState + enemiesHitCount
 
   -- Return the updated game state with the new values
-  if gameMode gstate == GameOver && gameMode gstate /= GameOver
+  if gameMode updatedState == GameOver
     then do
-      endGame gstate  -- Save the score to the high scores file
-      return gstate
+      endGame updatedState  -- Save the score to the high scores file
+      return updatedState
     else
-      return gstate {
+      return updatedState {
         elapsedTime = newElapsedTime,
         position = newPosition,
         bullets = allBullets,
@@ -79,19 +84,11 @@ step secs gstate = do
 
 
 
-
-
-
--- Function to check if the player has collided with an enemy and update the game state
-isPlayerHitByEnemy :: (Float, Float) -> Enemy -> GameState -> GameState
-isPlayerHitByEnemy (px, py) (Enemy (ex, ey) _) gstate
-  | isAlive gstate && abs (px - ex) < 20 && abs (py - ey) < 20 = 
-      let newLives = lives gstate - 1
-          newIsAlive = newLives > 0
-          newGameMode = if newLives <= 0 then GameOver else gameMode gstate
-      in gstate { lives = newLives, isAlive = newIsAlive, gameMode = newGameMode }
-  | otherwise = gstate
-
+isPlayerHitByEnemy :: GameState -> GameState
+isPlayerHitByEnemy gstate =
+  let newLives = lives gstate - 1
+      newGameMode = if newLives <= 0 then GameOver else gameMode gstate
+  in gstate { lives = newLives, gameMode = newGameMode }
 
 -- Function to check for collisions between bullets and enemies
 handleCollisions :: [Bullet] -> [Enemy] -> IO ([Enemy], [Explosion], Int)
