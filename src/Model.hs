@@ -24,7 +24,7 @@ instance Eq Enemy where
 
 
 -- Assuming GameMode is something like this:
-data GameMode = PreGame | InGame | GameOver | ControlsScreen
+data GameMode = PreGame | InGame | GameOver | ControlsScreen | BackStory
   deriving (Eq)  -- This automatically derives Eq instance
 
 data GameState = GameState {

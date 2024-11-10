@@ -48,7 +48,7 @@ step secs gstate =
     -- Move all enemies upwards
     let updatedEnemies = map (`moveEnemy` (x, y)) enemiesToAdd'
 
-    -- Handle collisions and add explosions
+    -- Handle collisions between bullets and enemies
     (enemiesAfterCollisions, newExplosions, enemiesHitCount) <- handleCollisions allBullets updatedEnemies
 
     -- Update explosions, reducing their time left and removing those that are finished
@@ -57,10 +57,14 @@ step secs gstate =
     -- Combine the new and updated explosions
     let finalExplosions = updatedExplosions ++ newExplosions
 
-    -- Handle player collisions with enemies, removing only those that collide without affecting health
-    let enemiesAfterPlayerCollisions = handlePlayerCollisions newPosition enemiesAfterCollisions
+    -- Check for player-enemy collisions
+    let (enemiesAfterPlayerCollisions, enemiesHitCount) = handlePlayerCollisions newPosition enemiesAfterCollisions
 
-    -- Update the score based on the number of enemies hit by bullets
+    -- Update player's health if collision occurs
+    let newHealth = lives gstate - enemiesHitCount
+
+    -- Handle the game-over condition
+    let finalHealth = if newHealth <= 0 then 0 else newHealth
     let updatedScore = score gstate + enemiesHitCount
 
     -- Return the updated game state with the new values
@@ -73,13 +77,17 @@ step secs gstate =
           elapsedTime = newElapsedTime,
           position = newPosition,
           bullets = allBullets,
-          enemies = enemiesAfterPlayerCollisions,  -- Use the updated enemies here
+          enemies = enemiesAfterPlayerCollisions,  -- Use the updated enemies list
           cooldownTime = finalCooldownTime,
           backgroundPosition = finalBgPosition,
           backgroundPosition2 = finalBgPosition2,
           score = updatedScore,
+          lives = finalHealth,  -- Update the player's health
           explosions = finalExplosions  -- Update explosions in game state
         }
+
+
+
 
 
 
@@ -120,10 +128,24 @@ partitionEnemies bullets enemies =
             else (enemy : remaining, hit))
         ([], []) enemies
 
--- Function to handle player collisions with enemies, updating the enemies list
--- Only removes enemies that collide with the player without affecting player health
-handlePlayerCollisions :: (Float, Float) -> [Enemy] -> [Enemy]
-handlePlayerCollisions playerPos = filter (not . isHitByPlayer playerPos)
+handlePlayerCollisions :: (Float, Float) -> [Enemy] -> ( [Enemy], Int )
+handlePlayerCollisions playerPos enemies =
+  let (remainingEnemies, damagedEnemies) = foldl handleCollision ([], 0) enemies
+  in (remainingEnemies, damagedEnemies)
+  where
+    -- Check for collisions with each enemy
+    handleCollision (accEnemies, damageCount) enemy@(Enemy (ex, ey) _) =
+      if (playerPos `isNearTo` (ex, ey)) then
+        -- If a collision occurs, remove the enemy and count the damage
+        (accEnemies, damageCount + 1)
+      else
+        -- Keep the enemy if no collision
+        (enemy : accEnemies, damageCount)
+
+-- Helper function to check if the player is near an enemy (within a collision radius)
+isNearTo :: (Float, Float) -> (Float, Float) -> Bool
+isNearTo (px, py) (ex, ey) = (px - ex)^2 + (py - ey)^2 < 25
+
 
 -- Function to check if an enemy is hit by any bullet
 isHitByBullet :: [Bullet] -> Enemy -> Bool
@@ -189,7 +211,7 @@ moveEnemy (Enemy (ex, ey) pic) (px, py) =
     -- If the enemy is higher than the player, move towards the player (upward)
     -- Otherwise, move downward if the enemy is below the player
     newY | ey > py = ey - 2  -- Move up towards the player if the enemy is above the player
-         | otherwise = ey - 4  -- Move down if the enemy is below the player
+         | otherwise = ey - 2  -- Move down if the enemy is below the player
 
   in Enemy (newX, newY) pic  -- Return the updated enemy with new position
 
@@ -224,11 +246,15 @@ input e gstate = case e of
     then return gstate { gameMode = InGame }  -- Start the game
     else if gameMode gstate == PreGame && isBottomClicked (mx, my)
       then return gstate { gameMode = ControlsScreen }  -- Show controls screen
+    else if gameMode gstate == PreGame && isLowestClicked (mx, my)
+      then return gstate { gameMode = BackStory }  -- Show controls screen
     else if gameMode gstate == GameOver && isTopClicked (mx, my)
       then do
         let resetState = resetGameState gstate
         return resetState { gameMode = InGame }
     else if gameMode gstate == ControlsScreen && isBottomClicked (mx, my)
+      then return gstate { gameMode = PreGame }
+    else if gameMode gstate == BackStory && isBottomClicked (mx, my)
       then return gstate { gameMode = PreGame }
     else if gameMode gstate == GameOver && isBottomClicked (mx, my)
       then do
@@ -248,6 +274,10 @@ isBottomClicked :: (Float, Float) -> Bool
 isBottomClicked (mx, my) =
   mx >= -130 && mx <= 70 && my >= -170 && my <= -70  -- Adjust button position and size as needed
 
+-- Function to check if the controls button was clicked
+isLowestClicked :: (Float, Float) -> Bool
+isLowestClicked (mx, my) =
+  mx >= -130 && mx <= 70 && my >= -280 && my <= -180  -- Adjust button position and size as needed
 
 -- Function to check if the start over button was clicked
 isTopClicked :: (Float, Float) -> Bool
