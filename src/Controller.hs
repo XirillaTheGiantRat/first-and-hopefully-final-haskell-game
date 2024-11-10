@@ -61,20 +61,25 @@ step secs gstate =
         finalExplosions = updatedExplosions ++ newExplosions
 
     -- Collision player enemy
-    let (enemiesAfterPlayerCollisions, playerHitCount) = handlePlayerCollisions newPosition enemiesAfterCollisions
+    let (enemiesAfterPlayerCollisions, playerHitCount, newIsAlive, newGameMode) = handlePlayerCollisions newPosition enemiesAfterCollisions gstate
 
-    -- Player health
+
+    -- Player health collision
+    let (enemiesAfterPlayerCollisions, newLives, newIsAlive, newGameMode) = handlePlayerCollisions newPosition enemiesAfterCollisions gstate
+        updatedScore = score gstate + enemiesHitCount
+        
     let newHealth = lives gstate - playerHitCount
-        finalHealth = max 0 newHealth  
+        finalHealth = max 0 newHealth
 
     -- Update score 
     let updatedScore = score gstate + enemiesHitCount
-
-    -- Gameover check
-    if gameMode gstate == GameOver || finalHealth <= 0
+    if newGameMode == GameOver && not (scoreSaved gstate)
       then do
-        endGame gstate 
-        return gstate
+        writeHighScore (score gstate)  
+        return gstate {
+          gameMode = newGameMode,
+          scoreSaved = True         
+        }
       else
         return gstate {
           elapsedTime = newElapsedTime,
@@ -89,7 +94,7 @@ step secs gstate =
           lives = newLives,
           isAlive = newIsAlive,
           gameMode = newGameMode,
-          scoreSaved = scoreSaved gstate  -- Keep current scoreSaved value
+          scoreSaved = scoreSaved gstate  
         }
 
 -- Function to check if the player has collided with an enemy and update the game state
@@ -101,6 +106,7 @@ isPlayerHitByEnemy (px, py) (Enemy (ex, ey) _) gstate
           newGameMode = if newLives <= 0 then GameOver else gameMode gstate
       in gstate { lives = newLives, isAlive = newIsAlive, gameMode = newGameMode }
   | otherwise = gstate
+
 
 -- Function to check for collisions between bullets and enemies
 handleCollisions :: [Bullet] -> [Enemy] -> IO ([Enemy], [Explosion], Int)
@@ -288,9 +294,6 @@ isLowestLowestClicked (mx, my) =
 isTopClicked :: (Float, Float) -> Bool
 isTopClicked (mx, my) =
   mx >= -130 && mx <= 70 && my >= -60 && my <= 40  -- Adjust button position and size as needed
-
-
-
 
 -- Function to reset the game state to the initial state
 -- Reset the game state to its initial values

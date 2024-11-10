@@ -201,3 +201,4 @@ rendercatUfo catufo = translate (550) (-300) $ scale 0.9 0.9 catufo
 -- Render michael with a cutesy bow
 renderMichaelBow :: Picture -> Picture
 renderMichaelBow michaelbow = translate (-550) (100) $ scale 0.9 0.9 michaelbow
+
