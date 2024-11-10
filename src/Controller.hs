@@ -16,29 +16,20 @@ step secs gstate = do
   -- Calculate the new elapsed time
   let newElapsedTime = elapsedTime gstate + secs
 
--- Background scrolling
   -- Background scrolling
   let
-        -- Calculate new positions for both backgrounds
-        newBgPosition = backgroundPosition gstate - (100 * secs)
-        newBgPosition2 = backgroundPosition2 gstate - (100 * secs)
-
-        -- Reset the first background if it's off-screen, and spawn a new one above it
-        finalBgPosition = if newBgPosition <= -900 then 900 else newBgPosition
-
-        -- Reset the second background if it's off-screen, and spawn a new one above it
-        finalBgPosition2 = if newBgPosition2 <= -900 then 900 else newBgPosition2
-
-
-
+      newBgPosition = backgroundPosition gstate - (100 * secs)
+      newBgPosition2 = backgroundPosition2 gstate - (100 * secs)
+      finalBgPosition = if newBgPosition <= -900 then 900 else newBgPosition
+      finalBgPosition2 = if newBgPosition2 <= -900 then 900 else newBgPosition2
 
   -- Reduce the cooldown timer if it's greater than 0
   let newCooldownTime = max 0 (cooldownTime gstate - secs)
 
   -- Ensure there are always two enemies
-  let enemiesToAdd = if length (enemies gstate) < 2
-                     then spawnRandomEnemies 1
-                     else return (enemies gstate)
+  enemiesToAdd' <- if length (enemies gstate) < 2
+                   then spawnRandomEnemies 1
+                   else return (enemies gstate)
 
   -- If the player is alive, move the character and process the bullets
   let (x, y) = position gstate
@@ -48,7 +39,6 @@ step secs gstate = do
 
   -- Move the bullets and remove those that go off screen
   let updatedBullets = filter (\(Bullet (_, by)) -> by <= 900) $ map moveBullet (bullets gstate)
-  
 
   -- Handle continuous shooting with cooldown
   let newBullet = if 'f' `elem` activeKeys gstate && newCooldownTime == 0 && isAlive gstate
@@ -61,15 +51,31 @@ step secs gstate = do
                            then 0.2
                            else newCooldownTime
 
-  -- Get the updated enemies, filtering out those hit by bullets
-  enemiesToAdd' <- enemiesToAdd
-  updatedEnemies <- handleCollisions allBullets enemiesToAdd'
+  -- Get the updated enemies, filtering out those hit by bullets and counting the hits
+  (enemiesAfterCollisions, enemiesHitCount) <- handleCollisions allBullets enemiesToAdd'
+
+  -- Update the score based on the number of enemies hit
+  let updatedScore = score gstate + enemiesHitCount
 
   -- Check for collision between the player and enemies
-  let newGameState = foldl (\gs enemy -> isPlayerHitByEnemy (position gs) enemy gs) gstate updatedEnemies
+  let newGameState = foldl (\gs enemy -> isPlayerHitByEnemy (position gs) enemy gs) gstate enemiesAfterCollisions
 
-  -- Return the updated game state with the new enemies, bullets, cooldown time, and game mode
-  return newGameState { elapsedTime = newElapsedTime, position = newPosition, bullets = allBullets, enemies = updatedEnemies, cooldownTime = finalCooldownTime, backgroundPosition = finalBgPosition, backgroundPosition2 = finalBgPosition2}
+  -- Return the updated game state with the new enemies, bullets, cooldown time, score, and game mode
+  if gameMode newGameState == GameOver && gameMode gstate /= GameOver
+    then do
+      endGame newGameState  -- Save the score to the high scores file
+      return newGameState
+    else
+      return newGameState {
+        elapsedTime = newElapsedTime,
+        position = newPosition,
+        bullets = allBullets,
+        enemies = enemiesAfterCollisions,
+        cooldownTime = finalCooldownTime,
+        backgroundPosition = finalBgPosition,
+        backgroundPosition2 = finalBgPosition2,
+        score = updatedScore
+      }
 
 
 
@@ -90,15 +96,15 @@ isPlayerHitByEnemy (px, py) (Enemy (ex, ey) _) gstate
 
 
 -- Function to check for collisions between bullets and enemies
-handleCollisions :: [Bullet] -> [Enemy] -> IO [Enemy]
+handleCollisions :: [Bullet] -> [Enemy] -> IO ([Enemy], Int)
 handleCollisions bullets enemies = do
   let remainingEnemies = filter (not . isHitByBullet bullets) enemies
-  if length remainingEnemies < 2  -- If less than 2 enemies remain after a collision
+      enemiesHit = length enemies - length remainingEnemies
+  if length remainingEnemies < 2
     then do
-      -- Spawn a new enemy if one dies, while keeping the other
       newEnemies <- spawnRandomEnemies 1
-      return $ remainingEnemies ++ newEnemies
-    else return remainingEnemies  -- Otherwise, return the remaining enemies
+      return (remainingEnemies ++ newEnemies, enemiesHit)
+    else return (remainingEnemies, enemiesHit)
 
 -- Function to check if an enemy is hit by any bullet
 isHitByBullet :: [Bullet] -> Enemy -> Bool
@@ -242,3 +248,10 @@ writeHighScore newScore = do
 insertScore :: Int -> [Int] -> [Int]
 insertScore newScore scores = 
     sortBy (flip compare) (newScore : scores)  -- Sorts in descending order
+
+
+endGame :: GameState -> IO ()
+endGame gstate = do
+  let finalScore = score gstate
+  putStrLn $ "Game Over! Your score was: " ++ show finalScore
+  writeHighScore finalScore  -- Save the final score to highscores.txt

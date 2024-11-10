@@ -56,59 +56,47 @@ viewPure gstate lifeImage deadImage oneHeartImage akRat akRat2 topImage bottomIm
         translate (-100) (-20) $ color black $ scale 0.2 0.2 (text "Start Game"),  -- Button text
         translate (-30) (-10) $ thickRectangle 0 0 200 100 5 (makeColor (249/255) (156/255) (196/255) 1),
 
-        
         -- Controls Button
         translate (-30) (-120) $ color white $ rectangleSolid 200 100,  -- Button background
         translate (-80) (-130) $ color black $ scale 0.2 0.2 (text "Controls"),  -- Button text
         translate (-30) (-120) $ thickRectangle 0 0 200 100 5 (makeColor (249/255) (156/255) (196/255) 1),
 
-
-        --welcome screen
+        -- Welcome screen
         translate (-30) (110) $ color white $ rectangleSolid 800 100,  -- Button background
         translate (-300) (120) $ color black $ scale 0.2 0.2 (text "Welcome to Michael's Ratventures Pt2! <3"),  -- Button text
-        -- Use the thickRectangle function to draw a thick pink border
         translate (-30) (130) $ thickRectangle 0 0 800 100 5 (makeColor (249/255) (156/255) (196/255) 1)
-
-
       ]
       
-    InGame -> 
+    InGame ->
       if isAlive gstate
       then
         let (x, y) = position gstate
             character = translate x y $ scale 0.5 0.5 (characterPic gstate)
-        -- Render each bullet (using a small red circle)
             bulletsPics = map (translateBulletPic . bulletPosition) (bullets gstate)
             translateBulletPic (bx, by) = translate bx by (color red (circleSolid 5))
-        -- Render each enemy, making it slightly larger with scale
             enemiesPics = map (\(Enemy (ex, ey) epic) -> translate ex ey $ scale 1.2 1.2 epic) (enemies gstate)
-        -- Render the appropriate image based on the number of lives
             lifePic = case lives gstate of
-                        0 -> renderDead deadImage  -- Draw the dead image when lives are 0
-                        1 -> renderLives oneHeartImage  -- Draw 1-heart image when lives are 1
-                        _ -> renderLives lifeImage  -- Draw full hearts for more than 1 life
-        -- Background scrolling
+                        0 -> renderDead deadImage
+                        1 -> renderLives oneHeartImage
+                        _ -> renderLives lifeImage
             background = drawScrollingBackground topImage bottomImage (backgroundPosition gstate) (backgroundPosition2 gstate)
+            scoreDisplay = translate (-600) 400 $ scale 0.3 0.3 $ color white $ text ("Score: " ++ show (score gstate))  -- Display score
+        in pictures (background : character : bulletsPics ++ enemiesPics ++ [lifePic, scoreDisplay])
 
-        in pictures (background : character : bulletsPics ++ enemiesPics ++ [lifePic]) 
-
-        
       else
         -- If the player is dead, show a "Game Over" message and "Start Over" button
         pictures [
           translate (-200) (100) $ color black $ scale 0.5 0.5 (text "Game Over"),
           translate (-30) (120) $ thickRectangle 0 0 600 100 5 (makeColor (249/255) (156/255) (196/255) 1),
 
-        translate (-30) (-120) $ color white $ rectangleSolid 200 100,  -- Button background
-        translate (-100) (-130) $ color black $ scale 0.2 0.2 (text "Main Menu"),  -- Button text
-        translate (-30) (-120) $ thickRectangle 0 0 200 100 5 (makeColor (249/255) (156/255) (196/255) 1),
+          translate (-30) (-120) $ color white $ rectangleSolid 200 100,  -- Button background
+          translate (-100) (-130) $ color black $ scale 0.2 0.2 (text "Main Menu"),  -- Button text
+          translate (-30) (-120) $ thickRectangle 0 0 200 100 5 (makeColor (249/255) (156/255) (196/255) 1),
 
-        -- Additional UI elements for the "Game Over" screen, if any
-        translate (-30) (-10) $ color white $ rectangleSolid 200 100,  -- Button background
-        translate (-100) (-20)  $ color black $ scale 0.2 0.2 (text "Start Over"),  -- Button text
-        translate (-30) (-10) $ thickRectangle 0 0 200 100 5 (makeColor (249/255) (156/255) (196/255) 1),
-          -- Show the dead image on the Game Over screen
-          renderDead deadImage
+          translate (-30) (-10) $ color white $ rectangleSolid 200 100,  -- Button background
+          translate (-100) (-20)  $ color black $ scale 0.2 0.2 (text "Start Over"),  -- Button text
+          translate (-30) (-10) $ thickRectangle 0 0 200 100 5 (makeColor (249/255) (156/255) (196/255) 1),
+          renderDead deadImage  -- Show the dead image on the Game Over screen
         ]
 
     GameOver -> 
@@ -116,20 +104,23 @@ viewPure gstate lifeImage deadImage oneHeartImage akRat akRat2 topImage bottomIm
         translate (-200) (100) $ color black $ scale 0.5 0.5 (text "Game Over"),
         translate (-30) (120) $ thickRectangle 0 0 600 100 5 (makeColor (249/255) (156/255) (196/255) 1),
 
+        -- Display final score
+        translate (-200) 200 $ scale 0.3 0.3 $ color (makeColor (249/255) (156/255) (196/255) 1) $ text ("Final Score: " ++ show (score gstate)),  -- Display final score
+
+        -- Main Menu button
         translate (-30) (-120) $ color white $ rectangleSolid 200 100,  -- Button background
         translate (-100) (-130) $ color black $ scale 0.2 0.2 (text "Main Menu"),  -- Button text
         translate (-30) (-120) $ thickRectangle 0 0 200 100 5 (makeColor (249/255) (156/255) (196/255) 1),
 
-        -- Additional UI elements for the "Game Over" screen, if any
+        -- Start Over button
         translate (-30) (-10) $ color white $ rectangleSolid 200 100,  -- Button background
         translate (-100) (-20)  $ color black $ scale 0.2 0.2 (text "Start Over"),  -- Button text
         translate (-30) (-10) $ thickRectangle 0 0 200 100 5 (makeColor (249/255) (156/255) (196/255) 1),
-        -- Show the dead image on the Game Over screen
-        renderDead deadImage
+
+        renderDead deadImage  -- Show the dead image on the Game Over screen
       ]
 
     ControlsScreen -> 
-      -- Show controls instructions text on the Controls screen
       pictures [
         translate (-130) 250 $ color black $ scale 0.2 0.2 (text "Controls:"),
         translate (-130) 200 $ color black $ scale 0.2 0.2 (text "W - Move Up"),
@@ -142,9 +133,7 @@ viewPure gstate lifeImage deadImage oneHeartImage akRat akRat2 topImage bottomIm
         translate (-30) (-120) $ thickRectangle 0 0 200 100 5 (makeColor (249/255) (156/255) (196/255) 1),
         renderAKRat akRat,
         renderAKRat2 akRat2,
-        translate (-175) (-400) $ color black $ scale 0.15 0.15 (text "Michael is ready to go into space!!!")  -- Back Button text
-
-
+        translate (-175) (-400) $ color black $ scale 0.15 0.15 (text "Michael is ready to go into space!!!")  -- Additional text
       ]
 
 -- Render the full life image at a fixed position

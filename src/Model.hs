@@ -40,13 +40,14 @@ data GameState = GameState {
                    gameMode          :: GameMode,
                    lives             :: Int,  -- Add lives to track player lives
                    backgroundPosition :: Float,  -- Position of the first background
-                   backgroundPosition2 :: Float  -- Position of the second background
+                   backgroundPosition2 :: Float,  -- Position of the second background
+                   score             :: Int  -- Add score to track player's score
                  }
 
 
 -- Initialize the game state with 2 lives
 initialState :: Picture -> GameState
-initialState pic = GameState ShowNothing 0 (0, 0) [] pic [] [] 0 True PreGame 2 0 900  -- 0 for the first background, 1800 for the second background
+initialState pic = GameState ShowNothing 0 (0, 0) [] pic [] [] 0 True PreGame 2 0 900 0 
 
 
 
