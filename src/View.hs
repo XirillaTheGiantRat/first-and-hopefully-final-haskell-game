@@ -76,7 +76,7 @@ viewPure gstate lifeImage deadImage oneHeartImage akRat akRat2 topImage bottomIm
             enemiesPics = map (\(Enemy (ex, ey) epic) -> translate ex ey $ scale 1.2 1.2 epic) (enemies gstate)
             lifePic = case lives gstate of
                         0 -> renderDead deadImage
-                        1 -> renderOneLive oneHeartImage
+                        1 -> renderLives oneHeartImage
                         _ -> renderLives lifeImage
             background = drawScrollingBackground topImage bottomImage (backgroundPosition gstate) (backgroundPosition2 gstate)
             scoreDisplay = translate (-600) 400 $ scale 0.3 0.3 $ color white $ text ("Score: " ++ show (score gstate))  -- Display score
@@ -139,10 +139,6 @@ viewPure gstate lifeImage deadImage oneHeartImage akRat akRat2 topImage bottomIm
 -- Render the full life image at a fixed position
 renderLives :: Picture -> Picture
 renderLives lifeImage = translate (-700) 400 lifeImage
-
--- Render the full life image at a fixed position
-renderOneLive :: Picture -> Picture
-renderOneLive oneHeartImage = translate (-700) 400 oneHeartImage
 
 -- Render the dead image at a fixed position (same as the life image)
 renderDead :: Picture -> Picture

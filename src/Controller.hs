@@ -28,6 +28,9 @@ step secs gstate = do
                      return (newEnemies ++ enemies gstate)
                    else return (enemies gstate)
 
+  -- Move all enemies upwards
+  let updatedEnemies = map moveEnemy enemiesToAdd'  -- Move all enemies upwards
+
   -- Player movement and bullet handling
   let (x, y) = position gstate
       newPosition = if isAlive gstate
@@ -44,7 +47,7 @@ step secs gstate = do
 
 
   -- Handle collisions and add explosions
-  (enemiesAfterCollisions, newExplosions, enemiesHitCount) <- handleCollisions allBullets enemiesToAdd'
+  (enemiesAfterCollisions, newExplosions, enemiesHitCount) <- handleCollisions allBullets updatedEnemies  -- Updated to use `updatedEnemies`
 
   -- Update explosions, reducing their time left and removing those that are finished
   let updatedExplosions = [e { explosionTimeLeft = explosionTimeLeft e - secs } | e <- explosions gstate, explosionTimeLeft e > secs]
@@ -52,29 +55,23 @@ step secs gstate = do
   -- Combine the new and updated explosions
   let finalExplosions = updatedExplosions ++ newExplosions
 
-  -- Handle player collisions with enemies (removes enemies from the list)
-  let enemiesAfterPlayerCollisions = handlePlayerCollisions newPosition enemiesAfterBulletCollisions
-
-  -- Call `isPlayerHitByEnemy` for each enemy that collides with the player
-  let updatedState = foldl (\gs enemy -> 
-                            if isPlayerHit enemy newPosition
-                            then isPlayerHitByEnemy gs
-                            else gs) gstate enemiesAfterPlayerCollisions
+  -- Handle player collisions with enemies, removing only those that collide without affecting health
+  let enemiesAfterPlayerCollisions = handlePlayerCollisions newPosition enemiesAfterCollisions
 
   -- Update the score based on the number of enemies hit by bullets
-  let updatedScore = score updatedState + enemiesHitCount
+  let updatedScore = score gstate + enemiesHitCount
 
   -- Return the updated game state with the new values
-  if gameMode updatedState == GameOver
+  if gameMode gstate == GameOver && gameMode gstate /= GameOver
     then do
-      endGame updatedState  -- Save the score to the high scores file
-      return updatedState
+      endGame gstate  -- Save the score to the high scores file
+      return gstate
     else
-      return updatedState {
+      return gstate {
         elapsedTime = newElapsedTime,
         position = newPosition,
         bullets = allBullets,
-        enemies = enemiesAfterPlayerCollisions,
+        enemies = enemiesAfterPlayerCollisions,  -- Use the updated enemies here
         cooldownTime = finalCooldownTime,
         backgroundPosition = finalBgPosition,
         backgroundPosition2 = finalBgPosition2,
@@ -83,12 +80,16 @@ step secs gstate = do
       }
 
 
+-- Function to check if the player has collided with an enemy and update the game state
+isPlayerHitByEnemy :: (Float, Float) -> Enemy -> GameState -> GameState
+isPlayerHitByEnemy (px, py) (Enemy (ex, ey) _) gstate
+  | isAlive gstate && abs (px - ex) < 20 && abs (py - ey) < 20 = 
+      let newLives = lives gstate - 1
+          newIsAlive = newLives > 0
+          newGameMode = if newLives <= 0 then GameOver else gameMode gstate
+      in gstate { lives = newLives, isAlive = newIsAlive, gameMode = newGameMode }
+  | otherwise = gstate
 
-isPlayerHitByEnemy :: GameState -> GameState
-isPlayerHitByEnemy gstate =
-  let newLives = lives gstate - 1
-      newGameMode = if newLives <= 0 then GameOver else gameMode gstate
-  in gstate { lives = newLives, gameMode = newGameMode }
 
 -- Function to check for collisions between bullets and enemies
 handleCollisions :: [Bullet] -> [Enemy] -> IO ([Enemy], [Explosion], Int)
@@ -130,9 +131,6 @@ isBulletHit (Enemy (ex, ey) _) (Bullet (bx, by)) =
   -- Check if the bullet's position is close enough to the enemy's position
   abs (bx - ex) < 20 && abs (by - ey) < 20  -- Adjust 20 to the appropriate "hit radius"
 
-
-
-
 -- Function to check for collisions between player and enemies
 handleEnemyCollisions :: (Float, Float) -> [Enemy] -> GameState -> GameState
 handleEnemyCollisions (px, py) enemies gstate = 
@@ -143,20 +141,19 @@ handleEnemyCollisions (px, py) enemies gstate =
       newGameMode = if newLives <= 0 then GameOver else gameMode gstate
   in gstate { enemies = remainingEnemies, lives = newLives, isAlive = newIsAlive, gameMode = newGameMode }
 
-
--- Function to check if an enemy is hit by player
+-- Function to check if an enemy is hit by player or has passed the bottom of the screen
 isHitByPlayer :: (Float, Float) -> Enemy -> Bool
 isHitByPlayer (px, py) (Enemy (ex, ey) _) =
-  abs (px - ex) < 20 && abs (py - ey) < 20  -- Adjust the "hit radius" as needed
+  -- Check if the player is near the enemy (within the "hit radius")
+  (abs (px - ex) < 20 && abs (py - ey) < 20) || 
+  -- Check if the enemy has reached y = -450, indicating it has passed the bottom of the screen
+  ey <= -450
+
 
 -- Function to check if a specific enemy collides with the player
 isPlayerHit :: Enemy -> (Float, Float) -> Bool
 isPlayerHit (Enemy (ex, ey) _) (px, py) =
   abs (px - ex) < 20 && abs (py - ey) < 20  -- Adjust the "hit radius" as needed
-
-
-
-
 
 screenWidth :: Float
 screenWidth = 400.0  -- Replace with your screen's width as Float
@@ -176,6 +173,10 @@ spawnRandomEnemies n = do
 -- Move the bullet upwards
 moveBullet :: Bullet -> Bullet
 moveBullet (Bullet (x, y)) = Bullet (x, y + 5)  -- Move the bullet upwards by 5 units
+
+-- Move the enemy upwards
+moveEnemy :: Enemy -> Enemy
+moveEnemy (Enemy (x, y) pic) = Enemy (x, y - 2) pic  -- Move the enemy upwards by 2 units
 
 -- Update position based on key direction with boundary checks
 move :: (Float, Float) -> Char -> (Float, Float)
