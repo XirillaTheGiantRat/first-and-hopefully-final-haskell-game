@@ -36,8 +36,7 @@ data GameState = GameState {
                    score             :: Int, 
                    explosions :: [Explosion],  
                    paused            :: Bool,  
-                   scoreSaved        :: Bool        -- New field to track if the score has been saved
-
+                   scoreSaved        :: Bool       
                  }
 
 -- initial data
