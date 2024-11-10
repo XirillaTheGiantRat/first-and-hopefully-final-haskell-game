@@ -12,78 +12,76 @@ moveAmount :: Float
 moveAmount = 2
 
 step :: Float -> GameState -> IO GameState
-step secs gstate = do
-  -- Calculate the new elapsed time and background scrolling
-  let newElapsedTime = elapsedTime gstate + secs
-      newBgPosition = backgroundPosition gstate - (100 * secs)
-      newBgPosition2 = backgroundPosition2 gstate - (100 * secs)
-      finalBgPosition = if newBgPosition <= -900 then 900 else newBgPosition
-      finalBgPosition2 = if newBgPosition2 <= -900 then 900 else newBgPosition2
-      newCooldownTime = max 0 (cooldownTime gstate - secs)
+step secs gstate = 
+  if paused gstate then 
+    return gstate  -- If the game is paused, return the state as is
+  else do
+    -- Continue with normal game logic when not paused
+    let newElapsedTime = elapsedTime gstate + secs
+        newBgPosition = backgroundPosition gstate - (100 * secs)
+        newBgPosition2 = backgroundPosition2 gstate - (100 * secs)
+        finalBgPosition = if newBgPosition <= -900 then 900 else newBgPosition
+        finalBgPosition2 = if newBgPosition2 <= -900 then 900 else newBgPosition2
+        newCooldownTime = max 0 (cooldownTime gstate - secs)
+
+    -- Player movement and bullet handling
+    let (x, y) = position gstate
+        newPosition = if isAlive gstate
+                      then foldl move (x, y) (activeKeys gstate)
+                      else (x, y)
+        updatedBullets = filter (\(Bullet (_, by)) -> by <= 900) $ map moveBullet (bullets gstate)
+        newBullet = if 'f' `elem` activeKeys gstate && newCooldownTime == 0 && isAlive gstate
+                    then [Bullet (x, y + 20)]
+                    else []
+        allBullets = newBullet ++ updatedBullets
+        finalCooldownTime = if 'f' `elem` activeKeys gstate && newCooldownTime == 0 && isAlive gstate
+                             then 0.2
+                             else newCooldownTime
+
+    -- Ensure two enemies are always present
+    enemiesToAdd' <- if length (enemies gstate) < 2
+                     then do
+                       newEnemies <- spawnRandomEnemies 1
+                       return (newEnemies ++ enemies gstate)
+                     else return (enemies gstate)
+
+    -- Move all enemies upwards
+    let updatedEnemies = map (`moveEnemy` (x, y)) enemiesToAdd'
+
+    -- Handle collisions and add explosions
+    (enemiesAfterCollisions, newExplosions, enemiesHitCount) <- handleCollisions allBullets updatedEnemies
+
+    -- Update explosions, reducing their time left and removing those that are finished
+    let updatedExplosions = [e { explosionTimeLeft = explosionTimeLeft e - secs } | e <- explosions gstate, explosionTimeLeft e > secs]
+
+    -- Combine the new and updated explosions
+    let finalExplosions = updatedExplosions ++ newExplosions
+
+    -- Handle player collisions with enemies, removing only those that collide without affecting health
+    let enemiesAfterPlayerCollisions = handlePlayerCollisions newPosition enemiesAfterCollisions
+
+    -- Update the score based on the number of enemies hit by bullets
+    let updatedScore = score gstate + enemiesHitCount
+
+    -- Return the updated game state with the new values
+    if gameMode gstate == GameOver
+      then do
+        endGame gstate  -- Save the score to the high scores file
+        return gstate
+      else
+        return gstate {
+          elapsedTime = newElapsedTime,
+          position = newPosition,
+          bullets = allBullets,
+          enemies = enemiesAfterPlayerCollisions,  -- Use the updated enemies here
+          cooldownTime = finalCooldownTime,
+          backgroundPosition = finalBgPosition,
+          backgroundPosition2 = finalBgPosition2,
+          score = updatedScore,
+          explosions = finalExplosions  -- Update explosions in game state
+        }
 
 
-
-  -- Move all enemies upwards
-
-  -- Player movement and bullet handling
-  let (x, y) = position gstate  -- Make sure these are defined before use
-      newPosition = if isAlive gstate
-                    then foldl move (x, y) (activeKeys gstate)
-                    else (x, y)
-      updatedBullets = filter (\(Bullet (_, by)) -> by <= 900) $ map moveBullet (bullets gstate)
-      newBullet = if 'f' `elem` activeKeys gstate && newCooldownTime == 0 && isAlive gstate
-                  then [Bullet (x, y + 20)]
-                  else []
-      allBullets = newBullet ++ updatedBullets
-      finalCooldownTime = if 'f' `elem` activeKeys gstate && newCooldownTime == 0 && isAlive gstate
-                           then 0.2
-                           else newCooldownTime
-
--- Ensure two enemies are always present
-  enemiesToAdd' <- if length (enemies gstate) < 2
-                   then do
-                     newEnemies <- spawnRandomEnemies 1
-                     return (newEnemies ++ enemies gstate)
-                   else return (enemies gstate)
-
--- Move all enemies upwards
-  let updatedEnemies = map (`moveEnemy` (x, y)) enemiesToAdd'
-
-  -- Player movement and bullet handling
-
-
-  -- Handle collisions and add explosions
-  (enemiesAfterCollisions, newExplosions, enemiesHitCount) <- handleCollisions allBullets updatedEnemies  -- Updated to use `updatedEnemies`
-
-  -- Update explosions, reducing their time left and removing those that are finished
-  let updatedExplosions = [e { explosionTimeLeft = explosionTimeLeft e - secs } | e <- explosions gstate, explosionTimeLeft e > secs]
-
-  -- Combine the new and updated explosions
-  let finalExplosions = updatedExplosions ++ newExplosions
-
-  -- Handle player collisions with enemies, removing only those that collide without affecting health
-  let enemiesAfterPlayerCollisions = handlePlayerCollisions newPosition enemiesAfterCollisions
-
-  -- Update the score based on the number of enemies hit by bullets
-  let updatedScore = score gstate + enemiesHitCount
-
-  -- Return the updated game state with the new values
-  if gameMode gstate == GameOver && gameMode gstate /= GameOver
-    then do
-      endGame gstate  -- Save the score to the high scores file
-      return gstate
-    else
-      return gstate {
-        elapsedTime = newElapsedTime,
-        position = newPosition,
-        bullets = allBullets,
-        enemies = enemiesAfterPlayerCollisions,  -- Use the updated enemies here
-        cooldownTime = finalCooldownTime,
-        backgroundPosition = finalBgPosition,
-        backgroundPosition2 = finalBgPosition2,
-        score = updatedScore,
-        explosions = finalExplosions  -- Update explosions in game state
-      }
 
 
 -- Function to check if the player has collided with an enemy and update the game state
@@ -207,32 +205,12 @@ move (x, y) 'd' = (min (x + moveAmount) 720, y)  -- Move right with boundary che
 move pos _      = pos  -- Ignore other keys
 
 
--- Handle user input (including mouse clicks)
--- Handle user input (including mouse clicks)
 input :: Event -> GameState -> IO GameState
 input e gstate = case e of
-  -- Handle "Start Game" button click in PreGame
-  EventKey (MouseButton LeftButton) Down _ (mx, my) -> 
-    if gameMode gstate == PreGame && isTopClicked (mx, my)
-    then return gstate { gameMode = InGame }  -- Start the game
-    else if gameMode gstate == PreGame && isBottomClicked (mx, my)
-      then return gstate { gameMode = ControlsScreen }  -- Show the controls screen
-    else if gameMode gstate == GameOver && isTopClicked (mx, my)
-      then do
-        -- Reset the game state when clicking "Start Over"
-        let resetState = resetGameState gstate
-        return resetState { gameMode = InGame }
-    else if gameMode gstate == ControlsScreen && isBottomClicked (mx, my)
-      then return gstate { gameMode = PreGame }  -- Go back to PreGame
-    else if gameMode gstate == GameOver && isBottomClicked (mx, my)
-      then do
-        -- Reset the game state when clicking "Start Over"
-        let resetState = resetGameState gstate
-        return resetState { gameMode = PreGame }
-    else
-      return gstate
+  -- Toggle the paused state when 'p' is pressed
+  EventKey (Char 'p') Down _ _ -> return gstate { paused = not (paused gstate) }
 
-  -- Handle movement keys ('w', 'a', 's', 'd')
+  -- Handle other input events like movement and shooting
   EventKey (Char c) Down _ _    | c `elem` "wasd" -> return $ gstate { activeKeys = c : activeKeys gstate }
   EventKey (Char c) Up _ _      | c `elem` "wasd" -> return $ gstate { activeKeys = filter (/= c) (activeKeys gstate) }
 
@@ -240,8 +218,28 @@ input e gstate = case e of
   EventKey (Char 'f') Down _ _  -> return $ gstate { activeKeys = 'f' : activeKeys gstate }
   EventKey (Char 'f') Up _ _    -> return $ gstate { activeKeys = filter (/= 'f') (activeKeys gstate) }
 
-  -- Handle other events (no change)
+  -- Handle mouse clicks for game modes
+  EventKey (MouseButton LeftButton) Down _ (mx, my) -> 
+    if gameMode gstate == PreGame && isTopClicked (mx, my)
+    then return gstate { gameMode = InGame }  -- Start the game
+    else if gameMode gstate == PreGame && isBottomClicked (mx, my)
+      then return gstate { gameMode = ControlsScreen }  -- Show controls screen
+    else if gameMode gstate == GameOver && isTopClicked (mx, my)
+      then do
+        let resetState = resetGameState gstate
+        return resetState { gameMode = InGame }
+    else if gameMode gstate == ControlsScreen && isBottomClicked (mx, my)
+      then return gstate { gameMode = PreGame }
+    else if gameMode gstate == GameOver && isBottomClicked (mx, my)
+      then do
+        let resetState = resetGameState gstate
+        return resetState { gameMode = PreGame }
+    else
+      return gstate
+
+  -- Other event handling...
   _ -> return gstate
+
 
 
 

@@ -43,7 +43,6 @@ view gstate = do
 
   return (viewPure gstate lifeImage deadImage oneHeartImage akRat akRat2 topImage bottomImage explosionImage)
 
--- Update the function signature to include `explosionImage` as the last parameter
 viewPure :: GameState -> Picture -> Picture -> Picture -> Picture -> Picture -> Picture -> Picture -> Picture -> Picture
 viewPure gstate lifeImage deadImage oneHeartImage akRat akRat2 topImage bottomImage explosionImage = 
   case gameMode gstate of
@@ -66,7 +65,7 @@ viewPure gstate lifeImage deadImage oneHeartImage akRat akRat2 topImage bottomIm
         translate (-30) (130) $ thickRectangle 0 0 800 100 5 (makeColor (249/255) (156/255) (196/255) 1)
       ]
       
-    InGame ->
+    InGame -> 
       if isAlive gstate
       then
         let (x, y) = position gstate
@@ -81,7 +80,21 @@ viewPure gstate lifeImage deadImage oneHeartImage akRat akRat2 topImage bottomIm
             background = drawScrollingBackground topImage bottomImage (backgroundPosition gstate) (backgroundPosition2 gstate)
             scoreDisplay = translate (-600) 400 $ scale 0.3 0.3 $ color white $ text ("Score: " ++ show (score gstate))  -- Display score
             explosionsPics = [translate ex ey (scale 0.5 0.5 explosionImage) | Explosion (ex, ey) _ <- explosions gstate]
-        in pictures (background : character : bulletsPics ++ enemiesPics ++ explosionsPics ++ [lifePic, scoreDisplay])
+            pausedPic = if paused gstate
+             then
+               -- Combine the control instructions and the "Paused" box
+                              translate 0 100 (color white (rectangleSolid 600 600)) <>  -- White box
+                              translate (-130) 300 (color black $ scale 0.2 0.2 (text "Paused")) <>  -- Text inside the box
+                              translate (-130) 250 (color black $ scale 0.2 0.2 (text "Controls:")) <>  -- Controls header
+                              translate (-130) 200 (color black $ scale 0.2 0.2 (text "W - Move Up")) <>  -- Controls instructions
+                              translate (-130) 150 (color black $ scale 0.2 0.2 (text "S - Move Down")) <> 
+                              translate (-130) 100 (color black $ scale 0.2 0.2 (text "A - Move Left")) <> 
+                              translate (-130) 50 (color black $ scale 0.2 0.2 (text "D - Move Right")) <> 
+                              translate (-130) 0 (color black $ scale 0.2 0.2 (text "F - Shoot")) <>
+                              translate (-130) (-50) (color black $ scale 0.2 0.2 (text "P - Pause"))
+
+             else blank
+        in pictures (background : character : bulletsPics ++ enemiesPics ++ explosionsPics ++ [lifePic, scoreDisplay, pausedPic])
 
       else
         -- If the player is dead, show a "Game Over" message and "Start Over" button
@@ -128,6 +141,7 @@ viewPure gstate lifeImage deadImage oneHeartImage akRat akRat2 topImage bottomIm
         translate (-130) 100 $ color black $ scale 0.2 0.2 (text "A - Move Left"),
         translate (-130) 50 $ color black $ scale 0.2 0.2 (text "D - Move Right"),
         translate (-130) 0 $ color black $ scale 0.2 0.2 (text "F - Shoot"),
+        translate (-130) (-50) $ color black $ scale 0.2 0.2 (text "P - Pause"),
         translate (-30) (-100) $ color white $ rectangleSolid 200 100,  -- Back Button background
         translate (-60) (-130) $ color black $ scale 0.2 0.2 (text "Back"),  -- Back Button text
         translate (-30) (-120) $ thickRectangle 0 0 200 100 5 (makeColor (249/255) (156/255) (196/255) 1),
@@ -135,6 +149,7 @@ viewPure gstate lifeImage deadImage oneHeartImage akRat akRat2 topImage bottomIm
         renderAKRat2 akRat2,
         translate (-175) (-400) $ color black $ scale 0.15 0.15 (text "Michael is ready to go into space!!!")  -- Additional text
       ]
+
 
 -- Render the full life image at a fixed position
 renderLives :: Picture -> Picture
