@@ -57,30 +57,34 @@ step secs gstate =
     -- Combine the new and updated explosions
     let finalExplosions = updatedExplosions ++ newExplosions
 
-    -- Handle player collisions with enemies, removing only those that collide without affecting health
-    let enemiesAfterPlayerCollisions = handlePlayerCollisions newPosition enemiesAfterCollisions
-
-    -- Update the score based on the number of enemies hit by bullets
-    let updatedScore = score gstate + enemiesHitCount
+    -- Handle player collisions with enemies, updating both enemies and player lives
+    let (enemiesAfterPlayerCollisions, newLives, newIsAlive, newGameMode) = handlePlayerCollisions newPosition enemiesAfterCollisions gstate
+        updatedScore = score gstate + enemiesHitCount
 
     -- Return the updated game state with the new values
-    if gameMode gstate == GameOver
+    if newGameMode == GameOver && not (scoreSaved gstate)
       then do
-        endGame gstate  -- Save the score to the high scores file
-        return gstate
+        writeHighScore (score gstate)  -- Save the score to the high scores file
+        return gstate {
+          gameMode = newGameMode,
+          scoreSaved = True            -- Set scoreSaved to True
+        }
       else
         return gstate {
           elapsedTime = newElapsedTime,
           position = newPosition,
           bullets = allBullets,
-          enemies = enemiesAfterPlayerCollisions,  -- Use the updated enemies here
+          enemies = enemiesAfterPlayerCollisions,
           cooldownTime = finalCooldownTime,
           backgroundPosition = finalBgPosition,
           backgroundPosition2 = finalBgPosition2,
           score = updatedScore,
-          explosions = finalExplosions  -- Update explosions in game state
+          explosions = finalExplosions,
+          lives = newLives,
+          isAlive = newIsAlive,
+          gameMode = newGameMode,
+          scoreSaved = scoreSaved gstate  -- Keep current scoreSaved value
         }
-
 
 
 
@@ -120,10 +124,21 @@ partitionEnemies bullets enemies =
             else (enemy : remaining, hit))
         ([], []) enemies
 
--- Function to handle player collisions with enemies, updating the enemies list
--- Only removes enemies that collide with the player without affecting player health
-handlePlayerCollisions :: (Float, Float) -> [Enemy] -> [Enemy]
-handlePlayerCollisions playerPos = filter (not . isHitByPlayer playerPos)
+-- Function to handle player collisions with enemies, updating the enemies list and lives
+handlePlayerCollisions :: (Float, Float) -> [Enemy] -> GameState -> ([Enemy], Int, Bool, GameMode)
+handlePlayerCollisions playerPos enemies gstate =
+  let 
+      -- Filter out enemies that collide with the player
+      remainingEnemies = filter (not . isHitByPlayer playerPos) enemies
+      -- Count how many enemies hit the player
+      enemiesHitCount = length enemies - length remainingEnemies
+      -- Update lives based on the number of collisions
+      newLives = lives gstate - enemiesHitCount
+      -- Check if player is still alive after losing lives
+      newIsAlive = newLives > 0
+      -- Set game mode to GameOver if no lives left
+      newGameMode = if newLives <= 0 then GameOver else gameMode gstate
+  in (remainingEnemies, newLives, newIsAlive, newGameMode)
 
 -- Function to check if an enemy is hit by any bullet
 isHitByBullet :: [Bullet] -> Enemy -> Bool

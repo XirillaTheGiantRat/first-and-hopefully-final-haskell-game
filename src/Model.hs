@@ -43,14 +43,15 @@ data GameState = GameState {
                    backgroundPosition2 :: Float,  -- Position of the second background
                    score             :: Int,  -- Add score to track player's score
                    explosions :: [Explosion],  -- Add existing explosions
-                   paused            :: Bool  -- New field to track paused state
+                   paused            :: Bool,  -- New field to track paused state
+                   scoreSaved        :: Bool        -- New field to track if the score has been saved
 
                  }
 
 
 -- Initialize the game state with 2 lives
 initialState :: Picture -> GameState
-initialState pic = GameState ShowNothing 0 (0, 0) [] pic [] [] 0 True PreGame 2 0 900 0 [] False
+initialState pic = GameState ShowNothing 0 (0, 0) [] pic [] [] 0 True PreGame 2 0 900 0 [] False False
 
 
 
